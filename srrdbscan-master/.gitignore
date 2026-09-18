@@ -1,0 +1,5 @@
+build/
+.vscode/
+external/
+third_party/
+results/
