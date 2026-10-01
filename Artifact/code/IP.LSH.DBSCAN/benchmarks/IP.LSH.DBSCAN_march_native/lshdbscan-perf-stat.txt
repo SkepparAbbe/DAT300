@@ -1,0 +1,22 @@
+# started on Thu Oct  1 18:11:27 2026
+
+
+ Performance counter stats for '../build/LSHDBSCAN_exec -f ../../../data/household/clean_normalized_household.txt -m 100 -e 2000 -M 5 -L 20':
+
+            16,301      context-switches                 #    309.0 cs/sec  cs_per_second     
+               369      cpu-migrations                   #      7.0 migrations/sec  migrations_per_second
+           520,493      page-faults                      #   9865.9 faults/sec  page_faults_per_second
+         52,756.81 msec task-clock                       #      nan CPUs  CPUs_utilized       
+     1,244,276,893      L1-dcache-load-misses            #      6.1 %  l1d_miss_rate            (37.62%)
+       595,789,995      LLC-loads                        #     28.8 %  llc_miss_rate            (25.02%)
+       110,067,563      branch-misses                    #      0.6 %  branch_miss_rate         (24.97%)
+    17,431,709,645      branches                         #    330.4 M/sec  branch_frequency     (25.07%)
+   127,531,287,980      cpu-cycles                       #      2.4 GHz  cycles_frequency       (37.68%)
+    87,826,779,870      instructions                     #      0.7 instructions  insn_per_cycle  (37.73%)
+
+      10.909865456 seconds time elapsed
+
+      44.788273000 seconds user
+       8.009312000 seconds sys
+
+

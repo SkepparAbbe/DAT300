@@ -1,22 +1,22 @@
-# started on Thu Oct  1 17:34:51 2026
+# started on Thu Oct  1 20:54:02 2026
 
 
  Performance counter stats for '../build/LSHDBSCAN_exec -f ../../../data/household/clean_normalized_household.txt -m 100 -e 2000 -M 5 -L 20':
 
-         1,064,166      context-switches                 #   9226.7 cs/sec  cs_per_second     
-             5,713      cpu-migrations                   #     49.5 migrations/sec  migrations_per_second
-         1,385,347      page-faults                      #  12011.4 faults/sec  page_faults_per_second
-        115,335.65 msec task-clock                       #      nan CPUs  CPUs_utilized       
-     2,834,246,141      L1-dcache-load-misses            #      8.8 %  l1d_miss_rate            (37.58%)
-       828,562,674      LLC-loads                        #     43.3 %  llc_miss_rate            (25.05%)
-       140,986,934      branch-misses                    #      0.5 %  branch_miss_rate         (25.02%)
-    26,880,825,038      branches                         #    233.1 M/sec  branch_frequency     (25.01%)
-   285,625,948,129      cpu-cycles                       #      2.5 GHz  cycles_frequency       (37.54%)
-   133,126,091,663      instructions                     #      0.5 instructions  insn_per_cycle  (37.53%)
+            19,421      context-switches                 #    362.1 cs/sec  cs_per_second     
+               347      cpu-migrations                   #      6.5 migrations/sec  migrations_per_second
+           531,873      page-faults                      #   9916.1 faults/sec  page_faults_per_second
+         53,637.12 msec task-clock                       #      nan CPUs  CPUs_utilized       
+     1,298,497,974      L1-dcache-load-misses            #      5.9 %  l1d_miss_rate            (37.52%)
+       556,034,980      LLC-loads                        #     29.9 %  llc_miss_rate            (25.03%)
+       114,576,034      branch-misses                    #      0.6 %  branch_miss_rate         (25.11%)
+    17,629,395,222      branches                         #    328.7 M/sec  branch_frequency     (25.10%)
+   137,523,791,680      cpu-cycles                       #      2.6 GHz  cycles_frequency       (37.66%)
+    90,878,288,803      instructions                     #      0.7 instructions  insn_per_cycle  (37.68%)
 
-      26.871006339 seconds time elapsed
+      11.296444144 seconds time elapsed
 
-      91.045189000 seconds user
-      24.529722000 seconds sys
+      45.360802000 seconds user
+       8.319898000 seconds sys
 
 
