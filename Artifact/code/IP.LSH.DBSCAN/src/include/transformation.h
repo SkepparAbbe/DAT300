@@ -3,8 +3,8 @@
 
 #include <point.h>
 #include <randomGen.h>
-#include "tbb/concurrent_unordered_map.h"
 #include "tbb/concurrent_vector.h"
+#include <libcuckoo/cuckoohash_map.hh>
 
 template <class T>
 inline void hash_combine(std::size_t& seed, const T& v)
@@ -74,7 +74,7 @@ public:
   HashTable(dataset*, std::string&);
   
   std::vector<Hyperplane> hyperplanes;
-  tbb::concurrent_unordered_map<HashedPoint, tbb::concurrent_vector<point*>, MyHasher> myMap;
+  libcuckoo::cuckoohash_map<HashedPoint, tbb::concurrent_vector<point*>, MyHasher> myMap;
 
   std::vector<CoreBucket> coreBuckets;
   std::vector<std::pair<point *, point *>> mergeTasks;
@@ -91,7 +91,7 @@ public:
   void populateHashTable(std::vector<point>::iterator, std::vector<point>::iterator);
   size_t getClosestToMean(std::vector<point*> & vec) const;
   
-  std::ostream& printTable(std::ostream & stream, char deli) const;
+  std::ostream& printTable(std::ostream & stream, char deli);
   std::ostream& printCoreBuckets(std::ostream&, char) const;
   std::ostream& printMergeTasks(std::ostream & stream, char deli) const;
 

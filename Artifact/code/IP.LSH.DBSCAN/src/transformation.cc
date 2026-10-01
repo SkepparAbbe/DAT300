@@ -8,17 +8,16 @@
 HashTable::HashTable(dataset* ds_,
 		     size_t numberOfHyperplanes_,
 		     RandGenerator* gen_)
+  : ds(ds_), gen(gen_), numberOfHyperplanes(numberOfHyperplanes_),
+    myMap(1)
 {
-  this->ds  = ds_;
-  this->gen = gen_;
-  numberOfHyperplanes = numberOfHyperplanes_;
   this->initializeHashTable(numberOfHyperplanes_);
 }
 
 HashTable::HashTable(dataset* ds_,
 		     std::string& fileName)
+  : ds(ds_), myMap(1)
 {
-  this->ds = ds_;
   initializeHashTable(fileName);
 }
 
@@ -36,7 +35,10 @@ void HashTable::populateHashTable()
 		     {
 		       return hashFunc(point, h);
 		     });
-      myMap[hashedPoint].push_back(&point);
+      ::point* pt = &point;
+      myMap.upsert(hashedPoint, [pt](tbb::concurrent_vector<::point*>& vec) {
+	vec.push_back(pt);
+      });
     }
 }
 
@@ -57,13 +59,17 @@ void HashTable::populateHashTable(std::vector<point>::iterator begin,
 		     {
 		       return hashFunc(*pointIter, h);
 		     });
-      myMap[hashedPoint].push_back(&(*pointIter));
+      ::point* pt = &(*pointIter);
+      myMap.upsert(hashedPoint, [pt](tbb::concurrent_vector<::point*>& vec) {
+	vec.push_back(pt);
+      });
     }
 }
 
 void HashTable::identifyCoreBuckets()
 {
-  for (auto & element : myMap)
+  auto lt = myMap.lock_table();
+  for (auto & element : lt)
     {
       if (element.second.size() >= minPts)
 	{
@@ -316,11 +322,12 @@ std::ostream& HashTable::printCoreBuckets(std::ostream& stream, char deli) const
   return stream;
 }
 
-std::ostream& HashTable::printTable(std::ostream& stream, char deli) const
+std::ostream& HashTable::printTable(std::ostream& stream, char deli)
 {
   size_t num = 0;
 
-  for (const auto & element : myMap)
+  auto lt = myMap.lock_table();
+  for (const auto & element : lt)
     {
       stream << "Bucket " << std::setw(2) << num++ << ":" << std::endl;
 
@@ -347,7 +354,8 @@ std::ostream& HashTable::printMergeTasks(std::ostream& stream, char deli) const
 
 void HashTable::identifyCoreBuckets_densityStyle()
 {
-  for (auto & element : myMap)
+  auto lt = myMap.lock_table();
+  for (auto & element : lt)
     {
       if (element.second.size() >= minPts)
 	{
@@ -453,13 +461,17 @@ std::vector<point*> HashTable::getEpsNeighbours(point &query, HashedPoint &hashe
 {
   std::vector<point*> result;
 
-  for (auto neighbour : myMap[hashedPoint])
+  tbb::concurrent_vector<point*> neighbours;
+  if (myMap.find(hashedPoint, neighbours))
     {
-      if (distanceFunc(query, *neighbour) <= epsilon)
+      for (auto neighbour : neighbours)
 	{
-	  result.push_back(neighbour);
+	  if (distanceFunc(query, *neighbour) <= epsilon)
+	    {
+	      result.push_back(neighbour);
+	    }
 	}
     }
-  
+
   return result;
 }
