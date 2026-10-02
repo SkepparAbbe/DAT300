@@ -5,6 +5,25 @@
 #include <randomGen.h>
 #include "tbb/concurrent_vector.h"
 #include <libcuckoo/cuckoohash_map.hh>
+#include <vector>
+
+struct ThreadLocalBucketValue {
+  std::vector<std::vector<point*>> perThreadVectors;
+
+  ThreadLocalBucketValue(size_t numThreads = 0)
+      : perThreadVectors(numThreads) {}
+
+  size_t size() const {
+    size_t total = 0;
+    for (const auto& vec : perThreadVectors) {
+      total += vec.size();
+    }
+    return total;
+  }
+};
+
+int getThreadLocalId();
+void setThreadLocalId(int id);
 
 template <class T>
 inline void hash_combine(std::size_t& seed, const T& v)
@@ -69,12 +88,13 @@ class HashTable
 
   void identifyMergeTasks();
   size_t numberOfHyperplanes;
+  size_t numberOfThreads;
 public:
-  HashTable(dataset*, size_t, RandGenerator*);
-  HashTable(dataset*, std::string&);
+  HashTable(dataset*, size_t, RandGenerator*, size_t numberOfThreads = 1);
+  HashTable(dataset*, std::string&, size_t numberOfThreads = 1);
   
   std::vector<Hyperplane> hyperplanes;
-  libcuckoo::cuckoohash_map<HashedPoint, tbb::concurrent_vector<point*>, MyHasher> myMap;
+  libcuckoo::cuckoohash_map<HashedPoint, ThreadLocalBucketValue, MyHasher> myMap;
 
   std::vector<CoreBucket> coreBuckets;
   std::vector<std::pair<point *, point *>> mergeTasks;

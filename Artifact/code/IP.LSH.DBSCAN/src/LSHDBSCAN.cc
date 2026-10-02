@@ -5,7 +5,8 @@
 LSHDBSCAN::LSHDBSCAN(dataset* ds_,
 		     size_t numberOfHashTables_,
 		     size_t numberOfHyperplanesPerTable_,
-		     bool benchmark_) : benchmark(benchmark_)
+		     bool benchmark_,
+		     size_t numberOfThreads_) : benchmark(benchmark_)
 {
   setDataset(ds_);
   this->numberOfHashTables = numberOfHashTables_;
@@ -16,7 +17,8 @@ LSHDBSCAN::LSHDBSCAN(dataset* ds_,
     {      
       hashTables.emplace_back(ds,
 			      numberOfHyperplanesPerTable,
-			      &gen);
+			      &gen,
+			      numberOfThreads_);
     }
   stop = std::chrono::steady_clock::now();
   duration_initializingHashTables = stop - start;
@@ -24,7 +26,8 @@ LSHDBSCAN::LSHDBSCAN(dataset* ds_,
 
 LSHDBSCAN::LSHDBSCAN(dataset* ds_,
 		     std::vector<std::string> fileNames,
-		     bool benchmark_) : benchmark(benchmark_)
+		     bool benchmark_,
+		     size_t numberOfThreads_) : benchmark(benchmark_)
 {
   setDataset(ds_);
   this->numberOfHashTables = fileNames.size();
@@ -33,7 +36,8 @@ LSHDBSCAN::LSHDBSCAN(dataset* ds_,
   for (size_t i = 0; i < numberOfHashTables; i++)
     {
       hashTables.emplace_back(ds,
-			      fileNames[i]);
+			      fileNames[i],
+			      numberOfThreads_);
     }
   stop = std::chrono::steady_clock::now();
   duration_initializingHashTables = stop - start;

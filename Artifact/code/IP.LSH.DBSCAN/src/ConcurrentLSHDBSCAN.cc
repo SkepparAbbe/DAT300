@@ -2,7 +2,9 @@
 #include <cassert>
 #include <iostream>
 #include <pthread.h>
+#include <atomic>
 #include <globals.h>
+#include <transformation.h>
 ConcurrentLSHDBSCAN::ConcurrentLSHDBSCAN(dataset* ds_,
 					 size_t numberOfHashTables_,
 					 size_t numberOfHyperplanesPerTable_,
@@ -14,7 +16,8 @@ ConcurrentLSHDBSCAN::ConcurrentLSHDBSCAN(dataset* ds_,
   LSHDBSCAN(ds_,
 	    numberOfHashTables_,
 	    numberOfHyperplanesPerTable_,
-	    benchamrk_)
+	    benchamrk_,
+	    numberOfThreads_)
 {
   pid = new pthread_t[numberOfThreads];
 
@@ -136,6 +139,9 @@ void ConcurrentLSHDBSCAN::performRelabeling()
 void* ConcurrentLSHDBSCAN::populateHashTables_thread(void *inputArg)
 {
   auto input = (ConcurrentLSHDBSCAN*) inputArg;
+
+  static std::atomic<int> next_thread_id{0};
+  setThreadLocalId(next_thread_id.fetch_add(1));
   
   for ( auto & task : input->populationTasks)
     {

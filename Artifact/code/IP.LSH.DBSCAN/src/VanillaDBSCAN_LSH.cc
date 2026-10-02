@@ -14,9 +14,11 @@ VanillaDBSCAN_LSH::VanillaDBSCAN_LSH(dataset* ds_,
     {
       hashTables.emplace_back(ds,
 			      numerOfHyperplanesPerTable,
-			      &gen);
-			      
+			      &gen,
+			      1);
+		      
     }
+
 
   for (auto& hashTable : hashTables)
     hashTable.populateHashTable();

@@ -5,25 +5,52 @@
 #include <globals.h>
 #include <cmath>
 
+thread_local int local_thread_id = -1;
+
+int getThreadLocalId() {
+  return local_thread_id;
+}
+
+void setThreadLocalId(int id) {
+  local_thread_id = id;
+}
+
 HashTable::HashTable(dataset* ds_,
 		     size_t numberOfHyperplanes_,
-		     RandGenerator* gen_)
+		     RandGenerator* gen_,
+		     size_t numberOfThreads_)
   : ds(ds_), gen(gen_), numberOfHyperplanes(numberOfHyperplanes_),
+    numberOfThreads(numberOfThreads_),
     myMap(1)
 {
   this->initializeHashTable(numberOfHyperplanes_);
 }
 
 HashTable::HashTable(dataset* ds_,
-		     std::string& fileName)
-  : ds(ds_), myMap(1)
+		     std::string& fileName,
+		     size_t numberOfThreads_)
+  : ds(ds_), numberOfThreads(numberOfThreads_),
+    myMap(1)
 {
   initializeHashTable(fileName);
+}
+
+static std::vector<point*> flattenBucket(const ThreadLocalBucketValue& bucket)
+{
+  std::vector<point*> result;
+  result.reserve(bucket.size());
+  for (const auto& vec : bucket.perThreadVectors) {
+    result.insert(result.end(), vec.begin(), vec.end());
+  }
+  return result;
 }
 
 void HashTable::populateHashTable()
 {
   assert(ds != NULL);
+
+  int tid = getThreadLocalId();
+  if (tid < 0) tid = 0;
 
   for (auto & point : ds->points)
     {
@@ -36,9 +63,11 @@ void HashTable::populateHashTable()
 		       return hashFunc(point, h);
 		     });
       ::point* pt = &point;
-      myMap.upsert(hashedPoint, [pt](tbb::concurrent_vector<::point*>& vec) {
-	vec.push_back(pt);
-      });
+      myMap.upsert(hashedPoint,
+                   [pt, tid](ThreadLocalBucketValue& bucket) {
+                     bucket.perThreadVectors[tid].push_back(pt);
+                   },
+                   ThreadLocalBucketValue(numberOfThreads));
     }
 }
 
@@ -46,6 +75,9 @@ void HashTable::populateHashTable(std::vector<point>::iterator begin,
 				  std::vector<point>::iterator end)
 {
   assert((end - begin) > 0);
+
+  int tid = getThreadLocalId();
+  if (tid < 0) tid = 0;
 
   for (std::vector<point>::iterator pointIter = begin;
        pointIter < end;
@@ -60,9 +92,11 @@ void HashTable::populateHashTable(std::vector<point>::iterator begin,
 		       return hashFunc(*pointIter, h);
 		     });
       ::point* pt = &(*pointIter);
-      myMap.upsert(hashedPoint, [pt](tbb::concurrent_vector<::point*>& vec) {
-	vec.push_back(pt);
-      });
+      myMap.upsert(hashedPoint,
+                   [pt, tid](ThreadLocalBucketValue& bucket) {
+                     bucket.perThreadVectors[tid].push_back(pt);
+                   },
+                   ThreadLocalBucketValue(numberOfThreads));
     }
 }
 
@@ -73,11 +107,7 @@ void HashTable::identifyCoreBuckets()
     {
       if (element.second.size() >= minPts)
 	{
-	  std::vector<point*> coreBucketElements;
-	  coreBucketElements.reserve(element.second.size());
-
-	  std::copy(element.second.begin(), element.second.end(),
-		    std::back_inserter(coreBucketElements));
+	  std::vector<point*> coreBucketElements = flattenBucket(element.second);
 
 	  point* core = coreBucketElements[getMedian(coreBucketElements)];
 	  size_t cnt = 0;
@@ -331,9 +361,12 @@ std::ostream& HashTable::printTable(std::ostream& stream, char deli)
     {
       stream << "Bucket " << std::setw(2) << num++ << ":" << std::endl;
 
-      for (const auto & p : element.second)
+      for (const auto& threadVec : element.second.perThreadVectors)
 	{
-	  p->print(stream << '\t', ' ') << std::endl;
+	  for (const auto & p : threadVec)
+	    {
+	      p->print(stream << '\t', ' ') << std::endl;
+	    }
 	}	  
     }
   return stream;
@@ -359,11 +392,9 @@ void HashTable::identifyCoreBuckets_densityStyle()
     {
       if (element.second.size() >= minPts)
 	{
-	  std::vector<point*> candidates, coreBucketElements;
-	  candidates.reserve(element.second.size()); coreBucketElements.reserve(element.second.size());
-
-	  std::copy(element.second.begin(), element.second.end(),
-		    std::back_inserter(candidates));
+	  std::vector<point*> candidates = flattenBucket(element.second);
+	  std::vector<point*> coreBucketElements;
+	  coreBucketElements.reserve(candidates.size());
 
 	  point* core = candidates[getClosestToMean(candidates)];
 	  //point* core = candidates[getMedian(candidates)]; #alternative
@@ -461,14 +492,17 @@ std::vector<point*> HashTable::getEpsNeighbours(point &query, HashedPoint &hashe
 {
   std::vector<point*> result;
 
-  tbb::concurrent_vector<point*> neighbours;
+  ThreadLocalBucketValue neighbours;
   if (myMap.find(hashedPoint, neighbours))
     {
-      for (auto neighbour : neighbours)
+      for (const auto& threadVec : neighbours.perThreadVectors)
 	{
-	  if (distanceFunc(query, *neighbour) <= epsilon)
+	  for (auto neighbour : threadVec)
 	    {
-	      result.push_back(neighbour);
+	      if (distanceFunc(query, *neighbour) <= epsilon)
+		{
+		  result.push_back(neighbour);
+		}
 	    }
 	}
     }
