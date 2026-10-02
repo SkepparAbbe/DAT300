@@ -2,3 +2,4 @@
 Artifact/code/IP.LSH.DBSCAN/build/*
 Artifact/data/household/*
 Artifact/data/mnist/*
+.venv/
