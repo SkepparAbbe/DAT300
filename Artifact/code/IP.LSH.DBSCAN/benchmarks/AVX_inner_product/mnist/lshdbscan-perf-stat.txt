@@ -1,0 +1,22 @@
+# started on Thu Oct  1 22:05:32 2026
+
+
+ Performance counter stats for '../build/LSHDBSCAN_exec -f ../../../data/mnist/mnist_data.txt -m 100 -e 0.2 -M 9 -L 58':
+
+            23,199      context-switches                 #    607.1 cs/sec  cs_per_second     
+               641      cpu-migrations                   #     16.8 migrations/sec  migrations_per_second
+           416,297      page-faults                      #  10894.8 faults/sec  page_faults_per_second
+         38,210.60 msec task-clock                       #      nan CPUs  CPUs_utilized       
+     4,116,917,673      L1-dcache-load-misses            #     14.9 %  l1d_miss_rate            (37.68%)
+       237,829,094      LLC-loads                        #     18.8 %  llc_miss_rate            (25.22%)
+        60,953,861      branch-misses                    #      0.3 %  branch_miss_rate         (25.08%)
+    18,381,783,099      branches                         #    481.1 M/sec  branch_frequency     (25.04%)
+    93,543,447,074      cpu-cycles                       #      2.4 GHz  cycles_frequency       (37.52%)
+    87,814,825,344      instructions                     #      0.9 instructions  insn_per_cycle  (37.59%)
+
+       8.825777633 seconds time elapsed
+
+      34.186596000 seconds user
+       4.086286000 seconds sys
+
+
