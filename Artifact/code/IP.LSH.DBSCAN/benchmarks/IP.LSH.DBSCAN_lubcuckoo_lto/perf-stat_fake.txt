@@ -1,0 +1,20 @@
+# started on Sun Oct  4 14:41:25 2026
+
+
+ Performance counter stats for '/home/sempere/DAT300/DAT300/Artifact/code/IP.LSH.DBSCAN/build/LSHDBSCAN_exec -f /home/sempere/DAT300/DAT300/Artifact/code/IP.LSH.DBSCAN/benchmarks/IP.LSH.DBSCAN_libcukoo/run.k2Dg98/household.txt -m 100 -e 2000 -M 5 -L 20':
+
+            23,530      context-switches                 #    474.4 cs/sec  cs_per_second     
+               328      cpu-migrations                   #      6.6 migrations/sec  migrations_per_second
+           490,687      page-faults                      #   9892.2 faults/sec  page_faults_per_second
+         49,603.63 msec task-clock                       #      nan CPUs  CPUs_utilized       
+       121,095,732      branch-misses                    #      0.7 %  branch_miss_rate         (50.04%)
+    16,721,877,969      branches                         #    337.1 M/sec  branch_frequency     (50.03%)
+   127,708,480,835      cpu-cycles                       #      2.6 GHz  cycles_frequency       (50.07%)
+    89,977,725,494      instructions                     #      0.7 instructions  insn_per_cycle  (50.07%)
+
+      10.773910417 seconds time elapsed
+
+      43.676313000 seconds user
+       5.935673000 seconds sys
+
+
