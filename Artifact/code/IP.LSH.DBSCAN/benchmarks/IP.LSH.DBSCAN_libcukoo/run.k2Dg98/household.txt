@@ -1,0 +1,1 @@
+/home/sempere/DAT300/DAT300/Artifact/data/household/clean_normalized_household.txt
