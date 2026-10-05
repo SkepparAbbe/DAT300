@@ -74,7 +74,7 @@ public:
   HashTable(dataset*, std::string&);
   
   std::vector<Hyperplane> hyperplanes;
-  libcuckoo::cuckoohash_map<HashedPoint, tbb::concurrent_vector<point*>, MyHasher> myMap;
+  libcuckoo::cuckoohash_map<HashedPoint, std::vector<point*>, MyHasher> myMap;
 
   std::vector<CoreBucket> coreBuckets;
   std::vector<std::pair<point *, point *>> mergeTasks;

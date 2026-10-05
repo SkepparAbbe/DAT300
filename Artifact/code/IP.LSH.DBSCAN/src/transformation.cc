@@ -36,7 +36,7 @@ void HashTable::populateHashTable()
 		       return hashFunc(point, h);
 		     });
       ::point* pt = &point;
-      myMap.upsert(hashedPoint, [pt](tbb::concurrent_vector<::point*>& vec) {
+      myMap.upsert(hashedPoint, [pt](std::vector<::point*>& vec) {
 	vec.push_back(pt);
       });
     }
@@ -60,7 +60,7 @@ void HashTable::populateHashTable(std::vector<point>::iterator begin,
 		       return hashFunc(*pointIter, h);
 		     });
       ::point* pt = &(*pointIter);
-      myMap.upsert(hashedPoint, [pt](tbb::concurrent_vector<::point*>& vec) {
+      myMap.upsert(hashedPoint, [pt](std::vector<::point*>& vec) {
 	vec.push_back(pt);
       });
     }
@@ -461,7 +461,7 @@ std::vector<point*> HashTable::getEpsNeighbours(point &query, HashedPoint &hashe
 {
   std::vector<point*> result;
 
-  tbb::concurrent_vector<point*> neighbours;
+  std::vector<point*> neighbours;
   if (myMap.find(hashedPoint, neighbours))
     {
       for (auto neighbour : neighbours)
