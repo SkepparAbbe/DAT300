@@ -59,7 +59,7 @@ void parseTheArguments(int argc, char* argv[], Parameters& params)
 {
   int opt;
 
-  while ( (opt=getopt(argc, argv, "am:e:t:f:L:M:b:")) != -1  )
+  while ( (opt=getopt(argc, argv, "am:e:t:f:L:M:b:s:")) != -1  )
     {
       switch(opt)
 	{
@@ -90,6 +90,9 @@ void parseTheArguments(int argc, char* argv[], Parameters& params)
 	case 'b':
 	  params.baselineFileName = std::string(optarg);
 	  break;
+	case 's':
+	  params.numberOfBatches = std::stoi(optarg);
+	  break;
 	default:
 	  std::cout << "Usage: " << argv[0] << " "
 		    << "-f inputFile "
@@ -100,6 +103,7 @@ void parseTheArguments(int argc, char* argv[], Parameters& params)
 		    << "[-m minPts] "
 		    << "[-a angularDistance] "
 		    << "[-b baselineClusteringFile]"
+		    << "[-s numberOfBatches]"
 		    << std::endl;
 
 	  exit(EXIT_FAILURE);

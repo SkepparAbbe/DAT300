@@ -3,7 +3,6 @@
 #include <globals.h>
 
 #define BENCHMARK true
-size_t numberOfBatches = 100;
 
 int main(int argc, char* argv[])
 {
@@ -26,7 +25,7 @@ int main(int argc, char* argv[])
 				params.numberOfHashTables,
 				params.numberOfHyperplanesPerTable,
 				params.numberOfThreads,
-				numberOfBatches,
+				params.numberOfBatches,
 				BENCHMARK);
   lshdbscan.introduceMe();
   std::cout << "Performing concurrent clustering...\n";
