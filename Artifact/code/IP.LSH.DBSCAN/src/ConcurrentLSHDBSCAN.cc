@@ -14,7 +14,8 @@ ConcurrentLSHDBSCAN::ConcurrentLSHDBSCAN(dataset* ds_,
   LSHDBSCAN(ds_,
 	    numberOfHashTables_,
 	    numberOfHyperplanesPerTable_,
-	    benchamrk_)
+	    benchamrk_,
+	    numberOfThreads_)
 {
   pid = new pthread_t[numberOfThreads];
 
@@ -56,9 +57,11 @@ void ConcurrentLSHDBSCAN::populateHashTables()
 {
   std::cout << "Populating the concurrent way!" << std::endl;
 
+  std::vector<std::pair<ConcurrentLSHDBSCAN*, size_t>> threadArgs(numberOfThreads);
   for (size_t threadID = 0; threadID < numberOfThreads; ++threadID)
     {
-      pthread_create(&pid[threadID], NULL, populateHashTables_thread, this);
+      threadArgs[threadID] = {this, threadID};
+      pthread_create(&pid[threadID], NULL, populateHashTables_thread, &threadArgs[threadID]);
     }
 
   for (size_t threadID = 0; threadID < numberOfThreads; ++threadID)
@@ -135,8 +138,10 @@ void ConcurrentLSHDBSCAN::performRelabeling()
 
 void* ConcurrentLSHDBSCAN::populateHashTables_thread(void *inputArg)
 {
-  auto input = (ConcurrentLSHDBSCAN*) inputArg;
-  
+  auto inputArgPair = (std::pair<ConcurrentLSHDBSCAN*, size_t>*) inputArg;
+  auto input = inputArgPair->first;
+  size_t threadID = inputArgPair->second;
+
   for ( auto & task : input->populationTasks)
     {
       if (task.booked == false)
@@ -146,10 +151,10 @@ void* ConcurrentLSHDBSCAN::populateHashTables_thread(void *inputArg)
 					     true)
 	      )
 	    {
-	      task.table.populateHashTable(task.begin, task.end);
+	      task.table.populateHashTable(task.begin, task.end, threadID);
 	    }
 	}
-    }  
+    }
   return NULL;
 }
 

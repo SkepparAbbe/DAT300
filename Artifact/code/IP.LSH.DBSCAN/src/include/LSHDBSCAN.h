@@ -38,10 +38,12 @@ class LSHDBSCAN
   LSHDBSCAN(dataset*,
 	    size_t numberOfHashTables_,
 	    size_t numberOfHyperplanesPerTable_,
-	    bool benchamrk_ = false);
+	    bool benchamrk_ = false,
+	    size_t numberOfThreads_ = 1);
   LSHDBSCAN(dataset*,
 	    std::vector<std::string> fileNames,
-	    bool benchmark_ = false);
+	    bool benchmark_ = false,
+	    size_t numberOfThreads_ = 1);
 
   void performClustering();
   std::ostream& getBenchmarkResults(std::ostream&, char deli) const;
