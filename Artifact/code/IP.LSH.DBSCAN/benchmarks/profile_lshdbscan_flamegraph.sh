@@ -15,6 +15,7 @@ shift $(( $# > 0 ? 1 : 0 )) || true
 #arguments
 default_args=(
   -f ../../../data/household/clean_normalized_household.txt
+  -b ../../../data/household/clean_normalized_household.idx_vanilla
   -m 100
   -e 2000
   -M 5
