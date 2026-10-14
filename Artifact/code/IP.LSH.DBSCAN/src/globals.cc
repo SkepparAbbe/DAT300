@@ -59,7 +59,7 @@ void parseTheArguments(int argc, char* argv[], Parameters& params)
 {
   int opt;
 
-  while ( (opt=getopt(argc, argv, "am:e:t:f:L:M:b:")) != -1  )
+  while ( (opt=getopt(argc, argv, "asm:e:t:f:L:M:b:")) != -1  )
     {
       switch(opt)
 	{
@@ -67,6 +67,9 @@ void parseTheArguments(int argc, char* argv[], Parameters& params)
 	  metric = angular;
 	  hashFunc = angularHash;
 	  distanceFunc = angularDistance;
+	  break;
+	case 's':
+	  params.sortBucketing = true;
 	  break;
 	case 'm':
 	  minPts = std::stoi(optarg);
@@ -99,6 +102,7 @@ void parseTheArguments(int argc, char* argv[], Parameters& params)
 		    << "[-e eps] " 
 		    << "[-m minPts] "
 		    << "[-a angularDistance] "
+		    << "[-s sortBucketing] "
 		    << "[-b baselineClusteringFile]"
 		    << std::endl;
 

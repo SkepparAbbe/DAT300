@@ -61,18 +61,40 @@ void HashTable::populateHashTable(std::vector<point>::iterator begin,
     }
 }
 
-void HashTable::identifyCoreBuckets()
+uint64_t HashTable::bucketKey(const point& p) const
 {
-  for (auto & element : myMap)
-    {
+  uint64_t key = 0;
+  for (size_t m = 0; m < hyperplanes.size(); ++m)
+    key = packKeyStep(key, hashFunc(p, hyperplanes[m]), m);
+  return key;
+}
+
+/* Calls visit(members) for every bucket with >= minPts members, from the CSR table
+   if sort-based bucketing filled it, otherwise from myMap. */
+template <class Visit> void HashTable::forEachCandidateBucket(Visit visit)
+{
+  std::vector<point*> members;
+  if (!csr.offsets.empty())
+    for (uint32_t bucket : candidateBuckets)
+      {
+	members.clear();
+	for (uint32_t i = csr.offsets[bucket]; i < csr.offsets[bucket + 1]; ++i)
+	  members.push_back(&ds->points[csr.ids[i]]);
+	visit(members);
+      }
+  else
+    for (auto & element : myMap)
       if (element.second.size() >= minPts)
 	{
-	  std::vector<point*> coreBucketElements;
-	  coreBucketElements.reserve(element.second.size());
+	  members.assign(element.second.begin(), element.second.end());
+	  visit(members);
+	}
+}
 
-	  std::copy(element.second.begin(), element.second.end(),
-		    std::back_inserter(coreBucketElements));
-
+void HashTable::identifyCoreBuckets()
+{
+  forEachCandidateBucket([this](std::vector<point*> & coreBucketElements)
+	{
 	  point* core = coreBucketElements[getMedian(coreBucketElements)];
 	  size_t cnt = 0;
 	  
@@ -99,8 +121,7 @@ void HashTable::identifyCoreBuckets()
 	      coreBucket.members = coreBucketElements;
 	      coreBuckets.push_back(coreBucket);
 	    }
-	}
-    }
+	});
 }
 
 size_t HashTable::getMedian(std::vector<point*> & vec) const
@@ -347,15 +368,10 @@ std::ostream& HashTable::printMergeTasks(std::ostream& stream, char deli) const
 
 void HashTable::identifyCoreBuckets_densityStyle()
 {
-  for (auto & element : myMap)
-    {
-      if (element.second.size() >= minPts)
+  forEachCandidateBucket([this](std::vector<point*> & candidates)
 	{
-	  std::vector<point*> candidates, coreBucketElements;
-	  candidates.reserve(element.second.size()); coreBucketElements.reserve(element.second.size());
-
-	  std::copy(element.second.begin(), element.second.end(),
-		    std::back_inserter(candidates));
+	  std::vector<point*> coreBucketElements;
+	  coreBucketElements.reserve(candidates.size());
 
 	  point* core = candidates[getClosestToMean(candidates)];
 	  //point* core = candidates[getMedian(candidates)]; #alternative
@@ -392,8 +408,7 @@ void HashTable::identifyCoreBuckets_densityStyle()
 			    );
 	      coreBuckets.push_back(coreBucket);
 	    }
-	}
-    }
+	});
 }
 
 size_t HashTable::getClosestToMean(std::vector<point*> & vec) const

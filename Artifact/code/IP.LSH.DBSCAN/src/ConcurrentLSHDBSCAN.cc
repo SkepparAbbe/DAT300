@@ -3,14 +3,18 @@
 #include <iostream>
 #include <pthread.h>
 #include <globals.h>
+#include <stdexcept>
+#include <tbb/task_arena.h>
 ConcurrentLSHDBSCAN::ConcurrentLSHDBSCAN(dataset* ds_,
 					 size_t numberOfHashTables_,
 					 size_t numberOfHyperplanesPerTable_,
 					 size_t numberOfThreads_,
 					 size_t numberOfBatches_,
-					 bool benchamrk_) :
+					 bool benchamrk_,
+					 bool sortBucketing_) :
   numberOfThreads((assert(numberOfThreads_>=1), numberOfThreads_)),
   numberOfBatches((assert(numberOfBatches_>=1), numberOfBatches_)),
+  sortBucketing(sortBucketing_),
   LSHDBSCAN(ds_,
 	    numberOfHashTables_,
 	    numberOfHyperplanesPerTable_,
@@ -52,8 +56,57 @@ ConcurrentLSHDBSCAN::ConcurrentLSHDBSCAN(dataset* ds_,
   assert(populationTasks.size() == numberOfBatches*numberOfHashTables);
 }
 
+/* Phase I, A1: for each table, key every point, radix-sort (key, id) and store the table as CSR;
+   candidate buckets are the runs with >= minPts members. Sort buffers are reused across tables.
+   Keys are computed point by point for a group of tables, so each point is read from memory once
+   per group rather than once per table; the group's keys take at most ~128 MB. */
+void ConcurrentLSHDBSCAN::populateSortedTables()
+{
+  const size_t N = ds->points.size();
+  if (N >= (size_t(1) << 32))
+    throw std::invalid_argument("Sort bucketing uses 32-bit point ids");
+  if (metric == angular && numberOfHyperplanesPerTable > 64)
+    throw std::invalid_argument("Angular sort bucketing requires M <= 64");
+
+  const size_t L = hashTables.size();
+  const size_t group = std::max<size_t>(1, std::min(L, (size_t(128) << 20) / (sizeof(uint64_t) * std::max<size_t>(N, 1))));
+  std::vector<std::vector<uint64_t>> groupKeys(group, std::vector<uint64_t>(N));
+  SortBuffers buffers;
+  buffers.resize(N);
+  tbb::task_arena arena(static_cast<int>(numberOfThreads));
+  arena.execute([&]
+  {
+    for (size_t first = 0; first < L; first += group)
+      {
+	const size_t count = std::min(group, L - first);
+	tbb::parallel_for(size_t(0), N, [&](size_t i)
+	{
+	  for (size_t g = 0; g < count; ++g)
+	    groupKeys[g][i] = hashTables[first + g].bucketKey(ds->points[i]);
+	});
+	for (size_t g = 0; g < count; ++g)
+	  {
+	    HashTable & table = hashTables[first + g];
+	    buffers.keys.swap(groupKeys[g]);
+	    buffers.sort(numberOfThreads, metric == angular ? unsigned(numberOfHyperplanesPerTable) : 0);
+	    table.csr = buildCsr(buffers, numberOfThreads);
+	    table.candidateBuckets.clear();
+	    for (uint32_t bucket = 0; bucket < table.csr.keys.size(); ++bucket)
+	      if (table.csr.offsets[bucket + 1] - table.csr.offsets[bucket] >= minPts)
+		table.candidateBuckets.push_back(bucket);
+	  }
+      }
+  });
+}
+
 void ConcurrentLSHDBSCAN::populateHashTables()
 {
+  if (sortBucketing)
+    {
+      std::cout << "Populating with sort-based bucketing!" << std::endl;
+      populateSortedTables();
+      return;
+    }
   std::cout << "Populating the concurrent way!" << std::endl;
 
   for (size_t threadID = 0; threadID < numberOfThreads; ++threadID)
@@ -253,6 +306,7 @@ void ConcurrentLSHDBSCAN::introduceMe() const
 	    << "\t#HyperPlanesPerHashTable: " << numberOfHyperplanesPerTable
 	    << "\t#threads: " << numberOfThreads
 	    << "\t#batches: " << numberOfBatches
+	    << "\tbucketing: " << (sortBucketing ? "sort (A1)" : "hash maps")
 	    << std::endl
 	    << "\tEps: " << epsilon_original
 	    << "\tminPts: " << minPts

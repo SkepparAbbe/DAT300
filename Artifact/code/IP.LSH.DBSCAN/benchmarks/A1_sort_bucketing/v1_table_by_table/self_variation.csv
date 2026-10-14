@@ -1,0 +1,7 @@
+dataset,L,K,rand_baseline_run1_vs_run2,rand_a1_run1_vs_run2
+household,5,36,0.999899,0.999169
+household,10,36,0.999997,0.999934
+household,20,36,0.999992,0.999970
+mnist,58,36,0.996155,0.996791
+mnist,116,36,0.998737,0.985601
+mnist,230,36,0.985776,0.995471

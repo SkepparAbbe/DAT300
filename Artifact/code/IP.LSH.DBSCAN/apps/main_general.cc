@@ -27,7 +27,8 @@ int main(int argc, char* argv[])
 				params.numberOfHyperplanesPerTable,
 				params.numberOfThreads,
 				numberOfBatches,
-				BENCHMARK);
+				BENCHMARK,
+				params.sortBucketing);
   lshdbscan.introduceMe();
   std::cout << "Performing concurrent clustering...\n";
   lshdbscan.performClustering();

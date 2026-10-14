@@ -53,7 +53,9 @@ class ConcurrentLSHDBSCAN : public LSHDBSCAN
   
   const size_t numberOfThreads;
   const size_t numberOfBatches;
+  const bool sortBucketing;  /* Phase I with radix sort + CSR (A1) instead of the concurrent hash maps */
   
+  void populateSortedTables();
   virtual void populateHashTables() override;
   virtual void identifyCoreBuckets() override;
   virtual void identifyMergeTasks() override;
@@ -67,7 +69,8 @@ class ConcurrentLSHDBSCAN : public LSHDBSCAN
 		      size_t numberOfHyperplanesPerTable_,
 		      size_t numberOfThreads_,
 		      size_t numberOfBatches_ = 2,
-		      bool benchamrk_ = false);
+		      bool benchamrk_ = false,
+		      bool sortBucketing_ = false);
 
   std::vector<PopulationTask> populationTasks;
   std::vector<RelabelingTask> relabelingTasks;

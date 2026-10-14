@@ -3,6 +3,7 @@
 
 #include <point.h>
 #include <randomGen.h>
+#include <sortBucketing.h>
 #include "tbb/concurrent_unordered_map.h"
 #include "tbb/concurrent_vector.h"
 
@@ -69,17 +70,21 @@ class HashTable
 
   void identifyMergeTasks();
   size_t numberOfHyperplanes;
+  template <class Visit> void forEachCandidateBucket(Visit);
 public:
   HashTable(dataset*, size_t, RandGenerator*);
   HashTable(dataset*, std::string&);
   
   std::vector<Hyperplane> hyperplanes;
   tbb::concurrent_unordered_map<HashedPoint, tbb::concurrent_vector<point*>, MyHasher> myMap;
+  CsrTable csr;                            /* sort-based bucketing (A1): used instead of myMap */
+  std::vector<uint32_t> candidateBuckets;  /* A1: CSR buckets with >= minPts members */
 
   std::vector<CoreBucket> coreBuckets;
   std::vector<std::pair<point *, point *>> mergeTasks;
 
   void populateHashTable();
+  uint64_t bucketKey(const point&) const;  /* A1: packed key of the M hash values */
   void identifyCoreBuckets();
   void identifyCoreBuckets_densityStyle();
   void identifyMergeTasks_V2();

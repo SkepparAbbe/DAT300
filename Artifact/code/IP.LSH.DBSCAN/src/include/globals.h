@@ -35,6 +35,7 @@ struct Parameters
   size_t numberOfHashTables = 10;
   size_t numberOfHyperplanesPerTable = 10;
   size_t numberOfThreads = std::thread::hardware_concurrency();
+  bool sortBucketing = false;
 };
 
 void parseTheArguments(int, char* argv[], Parameters&);

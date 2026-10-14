@@ -34,3 +34,9 @@ target_link_libraries(LSHDBSCAN_exec myLib gsl gslcblas gomp tbb pthread)
 
 add_executable (ParameterExploration_exec apps/main_parameter_exploration.cc)
 target_link_libraries(ParameterExploration_exec myLib gsl gslcblas gomp tbb pthread)
+
+# Tests for sort-based bucketing (A1): run with ctest
+enable_testing()
+add_executable (sort_bucketing_test tests/sort_bucketing_test.cc)
+target_link_libraries(sort_bucketing_test myLib gsl gslcblas gomp tbb pthread)
+add_test(NAME sort_bucketing COMMAND sort_bucketing_test)
