@@ -42,7 +42,7 @@ fi
 
 cd "$script_dir"
 
-perf record -F 99 --call-graph dwarf,16384 -o "$perf_data" -- "$binary" "${run_args[@]}"
+perf stat -- perf record -F 99 --call-graph dwarf,16384 -o "$perf_data" -- "$binary" "${run_args[@]}"
 perf script -i "$perf_data" | "$flamegraph_dir/stackcollapse-perf.pl" | "$flamegraph_dir/flamegraph.pl" --title "LSHDBSCAN_exec Flame Graph" > "$svg_output"
 
 echo "perf data: $script_dir/$perf_data"
