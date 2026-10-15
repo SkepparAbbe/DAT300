@@ -116,10 +116,10 @@ std::ostream &LSHDBSCAN::getBenchmarkResults(std::ostream &stream,
            << duration_identifyingCoreBuckets.count() << deli << std::left
            << std::setw(40) << "Merge tasks identification time:"
            << duration_identifyingMergeTasks.count() << deli << std::left
-           << std::setw(40)
-           << "Tasks merge time:" << duration_performingMergeTasks.count()
-           << deli << std::left << std::setw(40)
-           << "Relabeling data time:" << duration_relabelingData.count() << deli << deli;
+           << std::setw(40) << "Tasks merge time:"
+           << duration_performingMergeTasks.count() << deli << std::left
+           << std::setw(40) << "Relabeling data time:"
+           << duration_relabelingData.count() << deli << std::left;
 
   return stream;
 }
