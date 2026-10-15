@@ -1,4 +1,4 @@
-!#/bin/bash
+#!/bin/bash
 
 echo "Formatting code..."
 find . -type d \( -name build -o -name benchmarks \) -prune -o \
