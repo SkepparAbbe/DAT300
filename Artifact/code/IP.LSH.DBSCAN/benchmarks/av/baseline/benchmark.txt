@@ -1,0 +1,7 @@
+Hash tables initialization time:        0.000150578
+Hash tables population time:            0.661076
+Core buckets identification time:       0.363983
+Merge tasks identification time:        0.0370288
+Tasks merge time:                       3.2e-07
+Relabeling data time:                   0.024576
+
