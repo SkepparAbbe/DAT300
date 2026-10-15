@@ -45,6 +45,8 @@ void HashTable::populateHashTable()
 		     });
       localMap[hashedPoint].push_back(&point);
     }
+
+  buildBucketIndex();
 }
 
 void HashTable::populateHashTable(std::vector<point>::iterator begin,
@@ -73,46 +75,57 @@ void HashTable::populateHashTable(std::vector<point>::iterator begin,
     }
 }
 
+void HashTable::buildBucketIndex()
+{
+  bucketIndex.clear();
+  for (const auto & localMap : threadMaps)
+    for (const auto & element : localMap)
+      bucketIndex[element.first].push_back(&element.second);
+}
+
 std::vector<point*> HashTable::collectPoints(const HashedPoint& key) const
 {
-  size_t total = 0;
-  for (const auto & localMap : threadMaps)
-    {
-      auto it = localMap.find(key);
-      if (it != localMap.end())
-	total += it->second.size();
-    }
-
   std::vector<point*> result;
+
+  auto indexIt = bucketIndex.find(key);
+  if (indexIt == bucketIndex.end())
+    return result;
+
+  size_t total = 0;
+  for (const auto * bucketPtr : indexIt->second)
+    total += bucketPtr->size();
+
   result.reserve(total);
 
-  for (const auto & localMap : threadMaps)
-    {
-      auto it = localMap.find(key);
-      if (it != localMap.end())
-	result.insert(result.end(), it->second.begin(), it->second.end());
-    }
+  for (const auto * bucketPtr : indexIt->second)
+    result.insert(result.end(), bucketPtr->begin(), bucketPtr->end());
 
   return result;
 }
 
 void HashTable::identifyCoreBuckets()
 {
-  std::unordered_set<HashedPoint, MyHasher> uniqueKeys;
-  for (const auto & localMap : threadMaps)
-    for (const auto & element : localMap)
-      uniqueKeys.insert(element.first);
-
-  for (const auto & key : uniqueKeys)
+  for (const auto & indexElement : bucketIndex)
     {
-      std::vector<point*> coreBucketElements = collectPoints(key);
+      const auto & bucketPtrs = indexElement.second;
 
-      if (coreBucketElements.size() >= minPts)
-	{
-	  point* core = coreBucketElements[getMedian(coreBucketElements)];
-	  size_t cnt = 0;
+      size_t totalSize = 0;
+      for (const auto * bucketPtr : bucketPtrs)
+	totalSize += bucketPtr->size();
 
-	  std::for_each(coreBucketElements.begin(),
+      if (totalSize < minPts)
+	continue;
+
+      std::vector<point*> coreBucketElements;
+      coreBucketElements.reserve(totalSize);
+      for (const auto * bucketPtr : bucketPtrs)
+	coreBucketElements.insert(coreBucketElements.end(),
+				  bucketPtr->begin(), bucketPtr->end());
+
+      point* core = coreBucketElements[getMedian(coreBucketElements)];
+      size_t cnt = 0;
+
+      std::for_each(coreBucketElements.begin(),
 			coreBucketElements.end(),
 			[core, this, &cnt](point* p)
 			{
@@ -126,15 +139,14 @@ void HashTable::identifyCoreBuckets()
 			}
 			);
 
-	  if (cnt >= minPts)
-	    {
-	      core->setAsCorePoint();
+      if (cnt >= minPts)
+	{
+	  core->setAsCorePoint();
 
-	      CoreBucket coreBucket;
-	      coreBucket.representative = core;
-	      coreBucket.members = std::move(coreBucketElements);
-	      coreBuckets.push_back(coreBucket);
-	    }
+	  CoreBucket coreBucket;
+	  coreBucket.representative = core;
+	  coreBucket.members = std::move(coreBucketElements);
+	  coreBuckets.push_back(coreBucket);
 	}
     }
 }
@@ -328,12 +340,7 @@ void HashTable::performMergeTasks()
 
 std::ostream & HashTable::print(std::ostream & stream, char deli) const
 {
-  std::unordered_set<HashedPoint, MyHasher> uniqueKeys;
-  for (const auto & localMap : threadMaps)
-    for (const auto & element : localMap)
-      uniqueKeys.insert(element.first);
-
-  std::cout << "Hashed dataset's size is: " << uniqueKeys.size() << std::endl;
+  std::cout << "Hashed dataset's size is: " << bucketIndex.size() << std::endl;
   return stream;
 }
 
@@ -357,24 +364,15 @@ std::ostream& HashTable::printTable(std::ostream& stream, char deli) const
 {
   size_t num = 0;
 
-  std::unordered_set<HashedPoint, MyHasher> uniqueKeys;
-  for (const auto & localMap : threadMaps)
-    for (const auto & element : localMap)
-      uniqueKeys.insert(element.first);
-
-  for (const auto & key : uniqueKeys)
+  for (const auto & indexElement : bucketIndex)
     {
       stream << "Bucket " << std::setw(2) << num++ << ":" << std::endl;
 
-      for (const auto & localMap : threadMaps)
+      for (const auto * bucketPtr : indexElement.second)
 	{
-	  auto it = localMap.find(key);
-	  if (it != localMap.end())
+	  for (const auto & p : *bucketPtr)
 	    {
-	      for (const auto & p : it->second)
-		{
-		  p->print(stream << '\t', ' ') << std::endl;
-		}
+	      p->print(stream << '\t', ' ') << std::endl;
 	    }
 	}
     }
@@ -396,17 +394,21 @@ std::ostream& HashTable::printMergeTasks(std::ostream& stream, char deli) const
 
 void HashTable::identifyCoreBuckets_densityStyle()
 {
-  std::unordered_set<HashedPoint, MyHasher> uniqueKeys;
-  for (const auto & localMap : threadMaps)
-    for (const auto & element : localMap)
-      uniqueKeys.insert(element.first);
-
-  for (const auto & key : uniqueKeys)
+  for (const auto & indexElement : bucketIndex)
     {
-      std::vector<point*> candidates = collectPoints(key);
+      const auto & bucketPtrs = indexElement.second;
 
-      if (candidates.size() < minPts)
+      size_t totalSize = 0;
+      for (const auto * bucketPtr : bucketPtrs)
+	totalSize += bucketPtr->size();
+
+      if (totalSize < minPts)
 	continue;
+
+      std::vector<point*> candidates;
+      candidates.reserve(totalSize);
+      for (const auto * bucketPtr : bucketPtrs)
+	candidates.insert(candidates.end(), bucketPtr->begin(), bucketPtr->end());
 
       std::vector<point*> coreBucketElements;
       coreBucketElements.reserve(candidates.size());

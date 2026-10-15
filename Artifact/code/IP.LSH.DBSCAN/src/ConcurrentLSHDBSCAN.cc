@@ -68,6 +68,9 @@ void ConcurrentLSHDBSCAN::populateHashTables()
     {
       pthread_join(pid[threadID], NULL);
     }
+
+  for (auto & hashTable : hashTables)
+    hashTable.buildBucketIndex();
 }
 
 void ConcurrentLSHDBSCAN::identifyCoreBuckets()

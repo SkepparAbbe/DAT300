@@ -4,7 +4,6 @@
 #include <point.h>
 #include <randomGen.h>
 #include <unordered_map>
-#include <unordered_set>
 #include "tbb/concurrent_vector.h"
 
 template <class T>
@@ -76,6 +75,7 @@ class HashTable
 
   std::vector<Hyperplane> hyperplanes;
   std::vector<std::unordered_map<HashedPoint, std::vector<point*>, MyHasher>> threadMaps;
+  std::unordered_map<HashedPoint, std::vector<const std::vector<point*>*>, MyHasher> bucketIndex;
 
   std::vector<CoreBucket> coreBuckets;
   std::vector<std::pair<point *, point *>> mergeTasks;
@@ -90,6 +90,7 @@ class HashTable
   size_t getMedian(std::vector<point*> &) const;
 
   void populateHashTable(std::vector<point>::iterator, std::vector<point>::iterator, size_t threadID);
+  void buildBucketIndex();
   std::vector<point*> collectPoints(const HashedPoint& key) const;
   size_t getClosestToMean(std::vector<point*> & vec) const;
 
