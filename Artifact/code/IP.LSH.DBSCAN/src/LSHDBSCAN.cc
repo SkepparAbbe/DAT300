@@ -74,6 +74,8 @@ void LSHDBSCAN::performClustering() {
     performMergeTasks();
     performRelabeling();
   } else {
+    start_total = std::chrono::steady_clock::now();
+
     start = std::chrono::steady_clock::now();
     populateHashTables();
     stop = std::chrono::steady_clock::now();
@@ -98,6 +100,9 @@ void LSHDBSCAN::performClustering() {
     performRelabeling();
     stop = std::chrono::steady_clock::now();
     duration_relabelingData = stop - start;
+
+    stop_total = std::chrono::steady_clock::now();
+    duration_total = stop_total - start_total;
   }
 }
 
@@ -107,12 +112,13 @@ std::ostream &LSHDBSCAN::getBenchmarkResults(std::ostream &stream,
     stream << "Benchmarking was not activated!" << std::endl;
 
   else
-    stream << duration_initializingHashTables.count() << deli
-           << duration_populatingHashTables.count() << deli
-           << duration_identifyingCoreBuckets.count() << deli
-           << duration_identifyingMergeTasks.count() << deli
-           << duration_performingMergeTasks.count() << deli
-           << duration_relabelingData.count() << deli;
+    stream << "Hash tables initialization time: " << duration_initializingHashTables.count() << deli
+           << "Hash tables population time: " << duration_populatingHashTables.count() << deli
+           << "Core buckets identification time: " << duration_identifyingCoreBuckets.count() << deli
+           << "Merge tasks identification time: " << duration_identifyingMergeTasks.count() << deli
+           << "Tasks merge time: " << duration_performingMergeTasks.count() << deli
+           << "Relabeling data time: " << duration_relabelingData.count() << deli 
+           << "Total time: " << duration_total.count() << deli;
 
   return stream;
 }

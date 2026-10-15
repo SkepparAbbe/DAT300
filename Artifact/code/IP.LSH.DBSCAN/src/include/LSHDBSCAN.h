@@ -25,6 +25,7 @@ protected:
 
   void performGlobalMergeTasks();
 
+  std::chrono::time_point<std::chrono::steady_clock> start_total, stop_total;
   std::chrono::time_point<std::chrono::steady_clock> start, stop;
   std::chrono::duration<double> duration_initializingHashTables;
   std::chrono::duration<double> duration_populatingHashTables;
@@ -32,6 +33,7 @@ protected:
   std::chrono::duration<double> duration_identifyingMergeTasks;
   std::chrono::duration<double> duration_performingMergeTasks;
   std::chrono::duration<double> duration_relabelingData;
+  std::chrono::duration<double> duration_total;
 
 public:
   LSHDBSCAN(dataset *, size_t numberOfHashTables_,
