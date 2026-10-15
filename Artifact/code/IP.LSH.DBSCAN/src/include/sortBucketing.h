@@ -99,7 +99,7 @@ struct SortBuffers
   void sort(size_t threads, unsigned angularBits)
   {
     const size_t n = keys.size();
-    std::iota(ids.begin(), ids.end(), uint32_t(0));
+    std::iota(ids.begin(), ids.end(), uint32_t(0)); // fills the ids with 0,1 ... n-1
     if (n < 2)
       return;
     threads = std::min(threads, n);
