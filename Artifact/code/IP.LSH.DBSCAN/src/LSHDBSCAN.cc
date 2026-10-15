@@ -1,6 +1,7 @@
 #include <LSHDBSCAN.h>
 #include <cassert>
 #include <globals.h>
+#include <iomanip>
 
 LSHDBSCAN::LSHDBSCAN(dataset *ds_, size_t numberOfHashTables_,
                      size_t numberOfHyperplanesPerTable_, bool benchmark_)
@@ -74,8 +75,6 @@ void LSHDBSCAN::performClustering() {
     performMergeTasks();
     performRelabeling();
   } else {
-    start_total = std::chrono::steady_clock::now();
-
     start = std::chrono::steady_clock::now();
     populateHashTables();
     stop = std::chrono::steady_clock::now();
@@ -100,9 +99,6 @@ void LSHDBSCAN::performClustering() {
     performRelabeling();
     stop = std::chrono::steady_clock::now();
     duration_relabelingData = stop - start;
-
-    stop_total = std::chrono::steady_clock::now();
-    duration_total = stop_total - start_total;
   }
 }
 
@@ -112,13 +108,18 @@ std::ostream &LSHDBSCAN::getBenchmarkResults(std::ostream &stream,
     stream << "Benchmarking was not activated!" << std::endl;
 
   else
-    stream << "Hash tables initialization time: " << duration_initializingHashTables.count() << deli
-           << "Hash tables population time: " << duration_populatingHashTables.count() << deli
-           << "Core buckets identification time: " << duration_identifyingCoreBuckets.count() << deli
-           << "Merge tasks identification time: " << duration_identifyingMergeTasks.count() << deli
-           << "Tasks merge time: " << duration_performingMergeTasks.count() << deli
-           << "Relabeling data time: " << duration_relabelingData.count() << deli 
-           << "Total time: " << duration_total.count() << deli;
+    stream << std::left << std::setw(40) << "Hash tables initialization time:"
+           << duration_initializingHashTables.count() << deli << std::left
+           << std::setw(40) << "Hash tables population time:"
+           << duration_populatingHashTables.count() << deli << std::left
+           << std::setw(40) << "Core buckets identification time:"
+           << duration_identifyingCoreBuckets.count() << deli << std::left
+           << std::setw(40) << "Merge tasks identification time:"
+           << duration_identifyingMergeTasks.count() << deli << std::left
+           << std::setw(40)
+           << "Tasks merge time:" << duration_performingMergeTasks.count()
+           << deli << std::left << std::setw(40)
+           << "Relabeling data time:" << duration_relabelingData.count() << deli << deli;
 
   return stream;
 }
