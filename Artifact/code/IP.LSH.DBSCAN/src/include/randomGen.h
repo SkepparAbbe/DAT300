@@ -3,15 +3,14 @@
 
 #include <random>
 
-class RandGenerator
-{
- private:
+class RandGenerator {
+private:
   std::default_random_engine engine;
-  std::normal_distribution<double>* dist;
- public:
+  std::normal_distribution<double> *dist;
+
+public:
   RandGenerator();
   double getRandVal();
 };
-
 
 #endif
