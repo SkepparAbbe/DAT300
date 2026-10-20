@@ -1,0 +1,700 @@
+Hash tables initialization time:        0.000172535
+Hash tables population time:            0.496924
+Core buckets identification time:       0.364391
+Merge tasks identification time:        0.0352385
+Tasks merge time:                       2.7e-07
+Relabeling data time:                   0.0177563
+
+Hash tables initialization time:        0.00016365
+Hash tables population time:            0.501456
+Core buckets identification time:       0.357483
+Merge tasks identification time:        0.0346756
+Tasks merge time:                       2.96e-07
+Relabeling data time:                   0.0177623
+
+Hash tables initialization time:        0.000765454
+Hash tables population time:            0.566571
+Core buckets identification time:       0.335614
+Merge tasks identification time:        0.0370306
+Tasks merge time:                       5.27e-07
+Relabeling data time:                   0.0173231
+
+Hash tables initialization time:        0.000172069
+Hash tables population time:            0.491194
+Core buckets identification time:       0.350784
+Merge tasks identification time:        0.034217
+Tasks merge time:                       2.54e-07
+Relabeling data time:                   0.0168457
+
+Hash tables initialization time:        0.000163347
+Hash tables population time:            0.496769
+Core buckets identification time:       0.36615
+Merge tasks identification time:        0.0359732
+Tasks merge time:                       2.94e-07
+Relabeling data time:                   0.0226561
+
+Hash tables initialization time:        0.000152833
+Hash tables population time:            0.477096
+Core buckets identification time:       0.344915
+Merge tasks identification time:        0.0335942
+Tasks merge time:                       2.54e-07
+Relabeling data time:                   0.0170692
+
+Hash tables initialization time:        0.000160559
+Hash tables population time:            0.490686
+Core buckets identification time:       0.382464
+Merge tasks identification time:        0.0349508
+Tasks merge time:                       3.37e-07
+Relabeling data time:                   0.0246115
+
+Hash tables initialization time:        0.000161176
+Hash tables population time:            0.494735
+Core buckets identification time:       0.350688
+Merge tasks identification time:        0.0391924
+Tasks merge time:                       4.06e-07
+Relabeling data time:                   0.0324817
+
+Hash tables initialization time:        0.000158805
+Hash tables population time:            0.509414
+Core buckets identification time:       0.350914
+Merge tasks identification time:        0.0345706
+Tasks merge time:                       3.16e-07
+Relabeling data time:                   0.0269706
+
+Hash tables initialization time:        0.000154528
+Hash tables population time:            0.487809
+Core buckets identification time:       0.366863
+Merge tasks identification time:        0.0424095
+Tasks merge time:                       1.43e-07
+Relabeling data time:                   0.0175817
+
+Hash tables initialization time:        0.000155875
+Hash tables population time:            0.485207
+Core buckets identification time:       0.348658
+Merge tasks identification time:        0.0349001
+Tasks merge time:                       2.47e-07
+Relabeling data time:                   0.017293
+
+Hash tables initialization time:        0.000162663
+Hash tables population time:            0.490729
+Core buckets identification time:       0.355502
+Merge tasks identification time:        0.0379434
+Tasks merge time:                       3.84e-07
+Relabeling data time:                   0.0250724
+
+Hash tables initialization time:        0.000174688
+Hash tables population time:            0.493616
+Core buckets identification time:       0.365485
+Merge tasks identification time:        0.0349771
+Tasks merge time:                       5.4e-07
+Relabeling data time:                   0.0247436
+
+Hash tables initialization time:        0.000148676
+Hash tables population time:            0.513593
+Core buckets identification time:       0.369284
+Merge tasks identification time:        0.0349187
+Tasks merge time:                       2.81e-07
+Relabeling data time:                   0.0168099
+
+Hash tables initialization time:        0.000799957
+Hash tables population time:            0.483267
+Core buckets identification time:       0.438517
+Merge tasks identification time:        0.0357895
+Tasks merge time:                       2.37e-07
+Relabeling data time:                   0.0165697
+
+Hash tables initialization time:        0.000151085
+Hash tables population time:            0.498965
+Core buckets identification time:       0.356255
+Merge tasks identification time:        0.0355295
+Tasks merge time:                       3.23e-07
+Relabeling data time:                   0.024668
+
+Hash tables initialization time:        0.000153645
+Hash tables population time:            0.490606
+Core buckets identification time:       0.363376
+Merge tasks identification time:        0.0366743
+Tasks merge time:                       2.64e-07
+Relabeling data time:                   0.0170568
+
+Hash tables initialization time:        0.000289603
+Hash tables population time:            0.514265
+Core buckets identification time:       0.352887
+Merge tasks identification time:        0.0350321
+Tasks merge time:                       2.74e-07
+Relabeling data time:                   0.0168818
+
+Hash tables initialization time:        0.000154809
+Hash tables population time:            0.49538
+Core buckets identification time:       0.361617
+Merge tasks identification time:        0.0350243
+Tasks merge time:                       2.7e-07
+Relabeling data time:                   0.0251106
+
+Hash tables initialization time:        0.000151649
+Hash tables population time:            0.488283
+Core buckets identification time:       0.347804
+Merge tasks identification time:        0.0379594
+Tasks merge time:                       3.24e-07
+Relabeling data time:                   0.0209622
+
+Hash tables initialization time:        0.000151622
+Hash tables population time:            0.496378
+Core buckets identification time:       0.355548
+Merge tasks identification time:        0.0350972
+Tasks merge time:                       3.2e-07
+Relabeling data time:                   0.0221688
+
+Hash tables initialization time:        0.000154243
+Hash tables population time:            0.476524
+Core buckets identification time:       0.350043
+Merge tasks identification time:        0.0360886
+Tasks merge time:                       3.56e-07
+Relabeling data time:                   0.0248256
+
+Hash tables initialization time:        0.000163487
+Hash tables population time:            0.516374
+Core buckets identification time:       0.355786
+Merge tasks identification time:        0.0357414
+Tasks merge time:                       3.24e-07
+Relabeling data time:                   0.0254138
+
+Hash tables initialization time:        0.000766011
+Hash tables population time:            0.493447
+Core buckets identification time:       0.430578
+Merge tasks identification time:        0.0370483
+Tasks merge time:                       2.19e-07
+Relabeling data time:                   0.0169243
+
+Hash tables initialization time:        0.000155783
+Hash tables population time:            0.493041
+Core buckets identification time:       0.357247
+Merge tasks identification time:        0.0361281
+Tasks merge time:                       4.1e-07
+Relabeling data time:                   0.0251078
+
+Hash tables initialization time:        0.000149861
+Hash tables population time:            0.511246
+Core buckets identification time:       0.35584
+Merge tasks identification time:        0.03608
+Tasks merge time:                       3.3e-07
+Relabeling data time:                   0.0242957
+
+Hash tables initialization time:        0.000167133
+Hash tables population time:            0.50107
+Core buckets identification time:       0.356185
+Merge tasks identification time:        0.0354613
+Tasks merge time:                       2.47e-07
+Relabeling data time:                   0.0247286
+
+Hash tables initialization time:        0.000150703
+Hash tables population time:            0.516848
+Core buckets identification time:       0.35955
+Merge tasks identification time:        0.036227
+Tasks merge time:                       5.32e-07
+Relabeling data time:                   0.0176784
+
+Hash tables initialization time:        0.000157694
+Hash tables population time:            0.486574
+Core buckets identification time:       0.359552
+Merge tasks identification time:        0.0343559
+Tasks merge time:                       5.3e-07
+Relabeling data time:                   0.0268825
+
+Hash tables initialization time:        0.000151255
+Hash tables population time:            0.489983
+Core buckets identification time:       0.354068
+Merge tasks identification time:        0.0360622
+Tasks merge time:                       3.18e-07
+Relabeling data time:                   0.0205284
+
+Hash tables initialization time:        0.00016082
+Hash tables population time:            0.495251
+Core buckets identification time:       0.363388
+Merge tasks identification time:        0.0359196
+Tasks merge time:                       3.2e-07
+Relabeling data time:                   0.0246273
+
+Hash tables initialization time:        0.000163262
+Hash tables population time:            0.535509
+Core buckets identification time:       0.367611
+Merge tasks identification time:        0.0342449
+Tasks merge time:                       5.34e-07
+Relabeling data time:                   0.0171123
+
+Hash tables initialization time:        0.000154074
+Hash tables population time:            0.509036
+Core buckets identification time:       0.349695
+Merge tasks identification time:        0.0343485
+Tasks merge time:                       2.51e-07
+Relabeling data time:                   0.0175163
+
+Hash tables initialization time:        0.000174847
+Hash tables population time:            0.492022
+Core buckets identification time:       0.345317
+Merge tasks identification time:        0.0351522
+Tasks merge time:                       3.77e-07
+Relabeling data time:                   0.0250921
+
+Hash tables initialization time:        0.000167562
+Hash tables population time:            0.494351
+Core buckets identification time:       0.375262
+Merge tasks identification time:        0.0355519
+Tasks merge time:                       3.7e-07
+Relabeling data time:                   0.0249493
+
+Hash tables initialization time:        0.000151841
+Hash tables population time:            0.501725
+Core buckets identification time:       0.34603
+Merge tasks identification time:        0.0338527
+Tasks merge time:                       3.13e-07
+Relabeling data time:                   0.0246175
+
+Hash tables initialization time:        0.000152796
+Hash tables population time:            0.500342
+Core buckets identification time:       0.351621
+Merge tasks identification time:        0.0337189
+Tasks merge time:                       2.61e-07
+Relabeling data time:                   0.0169372
+
+Hash tables initialization time:        0.00015104
+Hash tables population time:            0.51231
+Core buckets identification time:       0.350614
+Merge tasks identification time:        0.0342764
+Tasks merge time:                       2.5e-07
+Relabeling data time:                   0.0168519
+
+Hash tables initialization time:        0.000159326
+Hash tables population time:            0.50015
+Core buckets identification time:       0.361238
+Merge tasks identification time:        0.0333434
+Tasks merge time:                       5.39e-07
+Relabeling data time:                   0.0227521
+
+Hash tables initialization time:        0.000149804
+Hash tables population time:            0.51344
+Core buckets identification time:       0.363096
+Merge tasks identification time:        0.0344451
+Tasks merge time:                       2.59e-07
+Relabeling data time:                   0.0219676
+
+Hash tables initialization time:        0.000155734
+Hash tables population time:            0.498276
+Core buckets identification time:       0.349765
+Merge tasks identification time:        0.0345164
+Tasks merge time:                       2.6e-07
+Relabeling data time:                   0.0247227
+
+Hash tables initialization time:        0.000161284
+Hash tables population time:            0.497345
+Core buckets identification time:       0.367072
+Merge tasks identification time:        0.0345069
+Tasks merge time:                       3.42e-07
+Relabeling data time:                   0.0243606
+
+Hash tables initialization time:        0.000149565
+Hash tables population time:            0.498174
+Core buckets identification time:       0.363239
+Merge tasks identification time:        0.0358533
+Tasks merge time:                       3.7e-07
+Relabeling data time:                   0.0250424
+
+Hash tables initialization time:        0.000164903
+Hash tables population time:            0.517535
+Core buckets identification time:       0.348697
+Merge tasks identification time:        0.037044
+Tasks merge time:                       2.5e-07
+Relabeling data time:                   0.0176775
+
+Hash tables initialization time:        0.000148602
+Hash tables population time:            0.488212
+Core buckets identification time:       0.347478
+Merge tasks identification time:        0.0343028
+Tasks merge time:                       2.72e-07
+Relabeling data time:                   0.0169047
+
+Hash tables initialization time:        0.000148837
+Hash tables population time:            0.515116
+Core buckets identification time:       0.360451
+Merge tasks identification time:        0.035002
+Tasks merge time:                       3.57e-07
+Relabeling data time:                   0.0256839
+
+Hash tables initialization time:        0.000155341
+Hash tables population time:            0.488247
+Core buckets identification time:       0.350213
+Merge tasks identification time:        0.0343381
+Tasks merge time:                       2.67e-07
+Relabeling data time:                   0.0172162
+
+Hash tables initialization time:        0.000171258
+Hash tables population time:            0.506003
+Core buckets identification time:       0.352464
+Merge tasks identification time:        0.0337236
+Tasks merge time:                       2.59e-07
+Relabeling data time:                   0.0167844
+
+Hash tables initialization time:        0.000151795
+Hash tables population time:            0.530094
+Core buckets identification time:       0.356201
+Merge tasks identification time:        0.0344311
+Tasks merge time:                       2.46e-07
+Relabeling data time:                   0.0174457
+
+Hash tables initialization time:        0.00016502
+Hash tables population time:            0.518458
+Core buckets identification time:       0.351831
+Merge tasks identification time:        0.0346979
+Tasks merge time:                       5.03e-07
+Relabeling data time:                   0.0170911
+
+Hash tables initialization time:        0.000163703
+Hash tables population time:            0.500945
+Core buckets identification time:       0.350453
+Merge tasks identification time:        0.0344991
+Tasks merge time:                       2.5e-07
+Relabeling data time:                   0.017241
+
+Hash tables initialization time:        0.000145349
+Hash tables population time:            0.495316
+Core buckets identification time:       0.347517
+Merge tasks identification time:        0.0341007
+Tasks merge time:                       5.07e-07
+Relabeling data time:                   0.0170387
+
+Hash tables initialization time:        0.000152805
+Hash tables population time:            0.491987
+Core buckets identification time:       0.360021
+Merge tasks identification time:        0.0355598
+Tasks merge time:                       3.2e-07
+Relabeling data time:                   0.0251117
+
+Hash tables initialization time:        0.000158088
+Hash tables population time:            0.505231
+Core buckets identification time:       0.362672
+Merge tasks identification time:        0.0367833
+Tasks merge time:                       3.64e-07
+Relabeling data time:                   0.0254047
+
+Hash tables initialization time:        0.000163091
+Hash tables population time:            0.509997
+Core buckets identification time:       0.362873
+Merge tasks identification time:        0.035407
+Tasks merge time:                       2.44e-07
+Relabeling data time:                   0.0175038
+
+Hash tables initialization time:        0.000156577
+Hash tables population time:            0.529936
+Core buckets identification time:       0.35004
+Merge tasks identification time:        0.0336454
+Tasks merge time:                       3.26e-07
+Relabeling data time:                   0.0229105
+
+Hash tables initialization time:        0.000152115
+Hash tables population time:            0.514286
+Core buckets identification time:       0.348155
+Merge tasks identification time:        0.0344738
+Tasks merge time:                       1.61e-07
+Relabeling data time:                   0.0172349
+
+Hash tables initialization time:        0.00015705
+Hash tables population time:            0.481798
+Core buckets identification time:       0.351498
+Merge tasks identification time:        0.0345358
+Tasks merge time:                       3.3e-07
+Relabeling data time:                   0.0262219
+
+Hash tables initialization time:        0.000156673
+Hash tables population time:            0.509773
+Core buckets identification time:       0.358048
+Merge tasks identification time:        0.0339791
+Tasks merge time:                       5.17e-07
+Relabeling data time:                   0.0171689
+
+Hash tables initialization time:        0.000169674
+Hash tables population time:            0.511195
+Core buckets identification time:       0.348132
+Merge tasks identification time:        0.034252
+Tasks merge time:                       2.78e-07
+Relabeling data time:                   0.0176181
+
+Hash tables initialization time:        0.000151616
+Hash tables population time:            0.490353
+Core buckets identification time:       0.354842
+Merge tasks identification time:        0.0340959
+Tasks merge time:                       2.07e-07
+Relabeling data time:                   0.0176267
+
+Hash tables initialization time:        0.000164696
+Hash tables population time:            0.531911
+Core buckets identification time:       0.359865
+Merge tasks identification time:        0.0379586
+Tasks merge time:                       3.16e-07
+Relabeling data time:                   0.0253304
+
+Hash tables initialization time:        0.000165369
+Hash tables population time:            0.49559
+Core buckets identification time:       0.353592
+Merge tasks identification time:        0.0340808
+Tasks merge time:                       2.5e-07
+Relabeling data time:                   0.0173726
+
+Hash tables initialization time:        0.000150062
+Hash tables population time:            0.508309
+Core buckets identification time:       0.369309
+Merge tasks identification time:        0.0370571
+Tasks merge time:                       3.23e-07
+Relabeling data time:                   0.025862
+
+Hash tables initialization time:        0.00016216
+Hash tables population time:            0.509945
+Core buckets identification time:       0.366943
+Merge tasks identification time:        0.0338696
+Tasks merge time:                       3.62e-07
+Relabeling data time:                   0.0219629
+
+Hash tables initialization time:        0.000158916
+Hash tables population time:            0.489019
+Core buckets identification time:       0.356468
+Merge tasks identification time:        0.0354891
+Tasks merge time:                       2.8e-07
+Relabeling data time:                   0.0173863
+
+Hash tables initialization time:        0.000161298
+Hash tables population time:            0.498442
+Core buckets identification time:       0.362439
+Merge tasks identification time:        0.0340276
+Tasks merge time:                       2.57e-07
+Relabeling data time:                   0.0172944
+
+Hash tables initialization time:        0.000167205
+Hash tables population time:            0.47841
+Core buckets identification time:       0.354719
+Merge tasks identification time:        0.0340514
+Tasks merge time:                       2.64e-07
+Relabeling data time:                   0.0175834
+
+Hash tables initialization time:        0.000162042
+Hash tables population time:            0.499577
+Core buckets identification time:       0.367926
+Merge tasks identification time:        0.0343575
+Tasks merge time:                       2.71e-07
+Relabeling data time:                   0.0174006
+
+Hash tables initialization time:        0.000151545
+Hash tables population time:            0.490394
+Core buckets identification time:       0.369193
+Merge tasks identification time:        0.0340135
+Tasks merge time:                       2.83e-07
+Relabeling data time:                   0.0170286
+
+Hash tables initialization time:        0.000149124
+Hash tables population time:            0.523488
+Core buckets identification time:       0.359799
+Merge tasks identification time:        0.0351832
+Tasks merge time:                       3.73e-07
+Relabeling data time:                   0.0252481
+
+Hash tables initialization time:        0.000273467
+Hash tables population time:            0.488297
+Core buckets identification time:       0.346607
+Merge tasks identification time:        0.0353502
+Tasks merge time:                       5.4e-07
+Relabeling data time:                   0.0244411
+
+Hash tables initialization time:        0.000156939
+Hash tables population time:            0.484336
+Core buckets identification time:       0.354351
+Merge tasks identification time:        0.0350866
+Tasks merge time:                       3.16e-07
+Relabeling data time:                   0.0254505
+
+Hash tables initialization time:        0.000196223
+Hash tables population time:            0.499832
+Core buckets identification time:       0.355857
+Merge tasks identification time:        0.0344849
+Tasks merge time:                       3.02e-07
+Relabeling data time:                   0.0213191
+
+Hash tables initialization time:        0.000165646
+Hash tables population time:            0.491629
+Core buckets identification time:       0.355385
+Merge tasks identification time:        0.0333658
+Tasks merge time:                       2.66e-07
+Relabeling data time:                   0.0170356
+
+Hash tables initialization time:        0.000151668
+Hash tables population time:            0.492938
+Core buckets identification time:       0.358525
+Merge tasks identification time:        0.0347907
+Tasks merge time:                       3e-07
+Relabeling data time:                   0.0247225
+
+Hash tables initialization time:        0.000176489
+Hash tables population time:            0.482094
+Core buckets identification time:       0.354849
+Merge tasks identification time:        0.0342316
+Tasks merge time:                       3.2e-07
+Relabeling data time:                   0.024996
+
+Hash tables initialization time:        0.00017727
+Hash tables population time:            0.498665
+Core buckets identification time:       0.351057
+Merge tasks identification time:        0.0347314
+Tasks merge time:                       2.77e-07
+Relabeling data time:                   0.0247629
+
+Hash tables initialization time:        0.000151061
+Hash tables population time:            0.516799
+Core buckets identification time:       0.361362
+Merge tasks identification time:        0.0340228
+Tasks merge time:                       2.44e-07
+Relabeling data time:                   0.0178298
+
+Hash tables initialization time:        0.000155782
+Hash tables population time:            0.51721
+Core buckets identification time:       0.366094
+Merge tasks identification time:        0.0352734
+Tasks merge time:                       2.5e-07
+Relabeling data time:                   0.0175456
+
+Hash tables initialization time:        0.000154131
+Hash tables population time:            0.497773
+Core buckets identification time:       0.355468
+Merge tasks identification time:        0.0347091
+Tasks merge time:                       3.07e-07
+Relabeling data time:                   0.0210012
+
+Hash tables initialization time:        0.000151111
+Hash tables population time:            0.491994
+Core buckets identification time:       0.350949
+Merge tasks identification time:        0.0342983
+Tasks merge time:                       5.12e-07
+Relabeling data time:                   0.0170036
+
+Hash tables initialization time:        0.00015258
+Hash tables population time:            0.505827
+Core buckets identification time:       0.361907
+Merge tasks identification time:        0.0338955
+Tasks merge time:                       2.98e-07
+Relabeling data time:                   0.0171429
+
+Hash tables initialization time:        0.000764482
+Hash tables population time:            0.5642
+Core buckets identification time:       0.324099
+Merge tasks identification time:        0.0375791
+Tasks merge time:                       5.14e-07
+Relabeling data time:                   0.0179232
+
+Hash tables initialization time:        0.000160434
+Hash tables population time:            0.505726
+Core buckets identification time:       0.345619
+Merge tasks identification time:        0.0348162
+Tasks merge time:                       5.16e-07
+Relabeling data time:                   0.0173236
+
+Hash tables initialization time:        0.000164837
+Hash tables population time:            0.486283
+Core buckets identification time:       0.358338
+Merge tasks identification time:        0.0344622
+Tasks merge time:                       3.34e-07
+Relabeling data time:                   0.0246656
+
+Hash tables initialization time:        0.000157466
+Hash tables population time:            0.491172
+Core buckets identification time:       0.363311
+Merge tasks identification time:        0.0333687
+Tasks merge time:                       2.61e-07
+Relabeling data time:                   0.016985
+
+Hash tables initialization time:        0.000151483
+Hash tables population time:            0.523508
+Core buckets identification time:       0.36194
+Merge tasks identification time:        0.0336971
+Tasks merge time:                       2.51e-07
+Relabeling data time:                   0.0171451
+
+Hash tables initialization time:        0.000185534
+Hash tables population time:            0.49802
+Core buckets identification time:       0.356983
+Merge tasks identification time:        0.0369813
+Tasks merge time:                       3.76e-07
+Relabeling data time:                   0.0175379
+
+Hash tables initialization time:        0.000156164
+Hash tables population time:            0.506546
+Core buckets identification time:       0.350542
+Merge tasks identification time:        0.0339917
+Tasks merge time:                       2.49e-07
+Relabeling data time:                   0.0173977
+
+Hash tables initialization time:        0.000157634
+Hash tables population time:            0.496111
+Core buckets identification time:       0.352493
+Merge tasks identification time:        0.036023
+Tasks merge time:                       5.33e-07
+Relabeling data time:                   0.0170395
+
+Hash tables initialization time:        0.000164989
+Hash tables population time:            0.487316
+Core buckets identification time:       0.370105
+Merge tasks identification time:        0.0358262
+Tasks merge time:                       2.46e-07
+Relabeling data time:                   0.0172672
+
+Hash tables initialization time:        0.000149346
+Hash tables population time:            0.528108
+Core buckets identification time:       0.358449
+Merge tasks identification time:        0.0348226
+Tasks merge time:                       3.24e-07
+Relabeling data time:                   0.0241231
+
+Hash tables initialization time:        0.000155635
+Hash tables population time:            0.485337
+Core buckets identification time:       0.359708
+Merge tasks identification time:        0.0374006
+Tasks merge time:                       4.03e-07
+Relabeling data time:                   0.0257204
+
+Hash tables initialization time:        0.000187452
+Hash tables population time:            0.484784
+Core buckets identification time:       0.378504
+Merge tasks identification time:        0.0346044
+Tasks merge time:                       3.17e-07
+Relabeling data time:                   0.0247307
+
+Hash tables initialization time:        0.000166135
+Hash tables population time:            0.510343
+Core buckets identification time:       0.350226
+Merge tasks identification time:        0.0362897
+Tasks merge time:                       3.87e-07
+Relabeling data time:                   0.0247341
+
+Hash tables initialization time:        0.000154947
+Hash tables population time:            0.50441
+Core buckets identification time:       0.365448
+Merge tasks identification time:        0.034285
+Tasks merge time:                       2.8e-07
+Relabeling data time:                   0.0172303
+
+Hash tables initialization time:        0.000153835
+Hash tables population time:            0.488611
+Core buckets identification time:       0.368204
+Merge tasks identification time:        0.0373287
+Tasks merge time:                       3.87e-07
+Relabeling data time:                   0.0264452
+
+Hash tables initialization time:        0.000156788
+Hash tables population time:            0.501538
+Core buckets identification time:       0.356336
+Merge tasks identification time:        0.0335824
+Tasks merge time:                       2.63e-07
+Relabeling data time:                   0.0176674
+
+Hash tables initialization time:        0.000155341
+Hash tables population time:            0.491961
+Core buckets identification time:       0.362575
+Merge tasks identification time:        0.0334646
+Tasks merge time:                       2.6e-07
+Relabeling data time:                   0.0170315
+
