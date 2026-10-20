@@ -3,6 +3,8 @@
 #include <globals.h>
 #include <iostream>
 #include <pthread.h>
+// #include <omp.h>
+
 ConcurrentLSHDBSCAN::ConcurrentLSHDBSCAN(dataset *ds_,
                                          size_t numberOfHashTables_,
                                          size_t numberOfHyperplanesPerTable_,
@@ -26,9 +28,7 @@ ConcurrentLSHDBSCAN::ConcurrentLSHDBSCAN(dataset *ds_,
   begin = this->ds->points.begin();
   end = begin + batchSize;
 
-  for (size_t batch = 0; batch < numberOfBatches; ++batch)
-
-  {
+  for (size_t batch = 0; batch < numberOfBatches; ++batch) {
     if (batch == numberOfBatches - 1)
       end = this->ds->points.end();
 
@@ -49,6 +49,14 @@ ConcurrentLSHDBSCAN::ConcurrentLSHDBSCAN(dataset *ds_,
 
 void ConcurrentLSHDBSCAN::populateHashTables() {
   std::cout << "Populating the concurrent way!" << std::endl;
+
+  // For omp_populate results
+  // #pragma omp parallel for num_threads(numberOfThreads) schedule(dynamic, 1)
+  // for (size_t i = 0; i < populationTasks.size(); ++i) {
+  //   auto &task = populationTasks[i];
+  //   task.table.populateHashTable(task.begin, task.end);
+  // }
+
 
   for (size_t threadID = 0; threadID < numberOfThreads; ++threadID) {
     pthread_create(&pid[threadID], NULL, populateHashTables_thread, this);
