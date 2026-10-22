@@ -36,7 +36,8 @@ void HashTable::populateHashTable(std::vector<point>::iterator begin,
                                   std::vector<point>::iterator end) {
   assert((end - begin) > 0);
 
-  for (std::vector<point>::iterator pointIter = begin; pointIter < end; pointIter++) {
+  for (std::vector<point>::iterator pointIter = begin; pointIter < end;
+       pointIter++) {
     HashedPoint hashedPoint;
     hashedPoint.features.reserve(numberOfHyperplanes);
 

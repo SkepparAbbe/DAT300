@@ -57,7 +57,6 @@ void ConcurrentLSHDBSCAN::populateHashTables() {
   //   task.table.populateHashTable(task.begin, task.end);
   // }
 
-
   for (size_t threadID = 0; threadID < numberOfThreads; ++threadID) {
     pthread_create(&pid[threadID], NULL, populateHashTables_thread, this);
   }
