@@ -1,0 +1,1802 @@
+<?xml version="1.0" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg version="1.1" width="1200" height="470" onload="init(evt)" viewBox="0 0 1200 470" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<!-- Flame graph stack visualization. See https://github.com/brendangregg/FlameGraph for latest version, and http://www.brendangregg.com/flamegraphs.html for examples. -->
+<!-- NOTES:  -->
+<defs>
+	<linearGradient id="background" y1="0" y2="1" x1="0" x2="0" >
+		<stop stop-color="#eeeeee" offset="5%" />
+		<stop stop-color="#eeeeb0" offset="95%" />
+	</linearGradient>
+</defs>
+<style type="text/css">
+	text { font-family:Verdana; font-size:12px; fill:rgb(0,0,0); }
+	#search, #ignorecase { opacity:0.1; cursor:pointer; }
+	#search:hover, #search.show, #ignorecase:hover, #ignorecase.show { opacity:1; }
+	#subtitle { text-anchor:middle; font-color:rgb(160,160,160); }
+	#title { text-anchor:middle; font-size:17px}
+	#unzoom { cursor:pointer; }
+	#frames > *:hover { stroke:black; stroke-width:0.5; cursor:pointer; }
+	.hide { display:none; }
+	.parent { opacity:0.5; }
+</style>
+<script type="text/ecmascript">
+<![CDATA[
+	"use strict";
+	var details, searchbtn, unzoombtn, matchedtxt, svg, searching, currentSearchTerm, ignorecase, ignorecaseBtn;
+	function init(evt) {
+		details = document.getElementById("details").firstChild;
+		searchbtn = document.getElementById("search");
+		ignorecaseBtn = document.getElementById("ignorecase");
+		unzoombtn = document.getElementById("unzoom");
+		matchedtxt = document.getElementById("matched");
+		svg = document.getElementsByTagName("svg")[0];
+		searching = 0;
+		currentSearchTerm = null;
+
+		// use GET parameters to restore a flamegraphs state.
+		var params = get_params();
+		if (params.x && params.y)
+			zoom(find_group(document.querySelector('[x="' + params.x + '"][y="' + params.y + '"]')));
+                if (params.s) search(params.s);
+	}
+
+	// event listeners
+	window.addEventListener("click", function(e) {
+		var target = find_group(e.target);
+		if (target) {
+			if (target.nodeName == "a") {
+				if (e.ctrlKey === false) return;
+				e.preventDefault();
+			}
+			if (target.classList.contains("parent")) unzoom(true);
+			zoom(target);
+			if (!document.querySelector('.parent')) {
+				// we have basically done a clearzoom so clear the url
+				var params = get_params();
+				if (params.x) delete params.x;
+				if (params.y) delete params.y;
+				history.replaceState(null, null, parse_params(params));
+				unzoombtn.classList.add("hide");
+				return;
+			}
+
+			// set parameters for zoom state
+			var el = target.querySelector("rect");
+			if (el && el.attributes && el.attributes.y && el.attributes._orig_x) {
+				var params = get_params()
+				params.x = el.attributes._orig_x.value;
+				params.y = el.attributes.y.value;
+				history.replaceState(null, null, parse_params(params));
+			}
+		}
+		else if (e.target.id == "unzoom") clearzoom();
+		else if (e.target.id == "search") search_prompt();
+		else if (e.target.id == "ignorecase") toggle_ignorecase();
+	}, false)
+
+	// mouse-over for info
+	// show
+	window.addEventListener("mouseover", function(e) {
+		var target = find_group(e.target);
+		if (target) details.nodeValue = "Function: " + g_to_text(target);
+	}, false)
+
+	// clear
+	window.addEventListener("mouseout", function(e) {
+		var target = find_group(e.target);
+		if (target) details.nodeValue = ' ';
+	}, false)
+
+	// ctrl-F for search
+	// ctrl-I to toggle case-sensitive search
+	window.addEventListener("keydown",function (e) {
+		if (e.keyCode === 114 || (e.ctrlKey && e.keyCode === 70)) {
+			e.preventDefault();
+			search_prompt();
+		}
+		else if (e.ctrlKey && e.keyCode === 73) {
+			e.preventDefault();
+			toggle_ignorecase();
+		}
+	}, false)
+
+	// functions
+	function get_params() {
+		var params = {};
+		var paramsarr = window.location.search.substr(1).split('&');
+		for (var i = 0; i < paramsarr.length; ++i) {
+			var tmp = paramsarr[i].split("=");
+			if (!tmp[0] || !tmp[1]) continue;
+			params[tmp[0]]  = decodeURIComponent(tmp[1]);
+		}
+		return params;
+	}
+	function parse_params(params) {
+		var uri = "?";
+		for (var key in params) {
+			uri += key + '=' + encodeURIComponent(params[key]) + '&';
+		}
+		if (uri.slice(-1) == "&")
+			uri = uri.substring(0, uri.length - 1);
+		if (uri == '?')
+			uri = window.location.href.split('?')[0];
+		return uri;
+	}
+	function find_child(node, selector) {
+		var children = node.querySelectorAll(selector);
+		if (children.length) return children[0];
+	}
+	function find_group(node) {
+		var parent = node.parentElement;
+		if (!parent) return;
+		if (parent.id == "frames") return node;
+		return find_group(parent);
+	}
+	function orig_save(e, attr, val) {
+		if (e.attributes["_orig_" + attr] != undefined) return;
+		if (e.attributes[attr] == undefined) return;
+		if (val == undefined) val = e.attributes[attr].value;
+		e.setAttribute("_orig_" + attr, val);
+	}
+	function orig_load(e, attr) {
+		if (e.attributes["_orig_"+attr] == undefined) return;
+		e.attributes[attr].value = e.attributes["_orig_" + attr].value;
+		e.removeAttribute("_orig_"+attr);
+	}
+	function g_to_text(e) {
+		var text = find_child(e, "title").firstChild.nodeValue;
+		return (text)
+	}
+	function g_to_func(e) {
+		var func = g_to_text(e);
+		// if there's any manipulation we want to do to the function
+		// name before it's searched, do it here before returning.
+		return (func);
+	}
+	function update_text(e) {
+		var r = find_child(e, "rect");
+		var t = find_child(e, "text");
+		var w = parseFloat(r.attributes.width.value) -3;
+		var txt = find_child(e, "title").textContent.replace(/\([^(]*\)$/,"");
+		t.attributes.x.value = parseFloat(r.attributes.x.value) + 3;
+
+		// Smaller than this size won't fit anything
+		if (w < 2 * 12 * 0.59) {
+			t.textContent = "";
+			return;
+		}
+
+		t.textContent = txt;
+		var sl = t.getSubStringLength(0, txt.length);
+		// check if only whitespace or if we can fit the entire string into width w
+		if (/^ *$/.test(txt) || sl < w)
+			return;
+
+		// this isn't perfect, but gives a good starting point
+		// and avoids calling getSubStringLength too often
+		var start = Math.floor((w/sl) * txt.length);
+		for (var x = start; x > 0; x = x-2) {
+			if (t.getSubStringLength(0, x + 2) <= w) {
+				t.textContent = txt.substring(0, x) + "..";
+				return;
+			}
+		}
+		t.textContent = "";
+	}
+
+	// zoom
+	function zoom_reset(e) {
+		if (e.attributes != undefined) {
+			orig_load(e, "x");
+			orig_load(e, "width");
+		}
+		if (e.childNodes == undefined) return;
+		for (var i = 0, c = e.childNodes; i < c.length; i++) {
+			zoom_reset(c[i]);
+		}
+	}
+	function zoom_child(e, x, ratio) {
+		if (e.attributes != undefined) {
+			if (e.attributes.x != undefined) {
+				orig_save(e, "x");
+				e.attributes.x.value = (parseFloat(e.attributes.x.value) - x - 10) * ratio + 10;
+				if (e.tagName == "text")
+					e.attributes.x.value = find_child(e.parentNode, "rect[x]").attributes.x.value + 3;
+			}
+			if (e.attributes.width != undefined) {
+				orig_save(e, "width");
+				e.attributes.width.value = parseFloat(e.attributes.width.value) * ratio;
+			}
+		}
+
+		if (e.childNodes == undefined) return;
+		for (var i = 0, c = e.childNodes; i < c.length; i++) {
+			zoom_child(c[i], x - 10, ratio);
+		}
+	}
+	function zoom_parent(e) {
+		if (e.attributes) {
+			if (e.attributes.x != undefined) {
+				orig_save(e, "x");
+				e.attributes.x.value = 10;
+			}
+			if (e.attributes.width != undefined) {
+				orig_save(e, "width");
+				e.attributes.width.value = parseInt(svg.width.baseVal.value) - (10 * 2);
+			}
+		}
+		if (e.childNodes == undefined) return;
+		for (var i = 0, c = e.childNodes; i < c.length; i++) {
+			zoom_parent(c[i]);
+		}
+	}
+	function zoom(node) {
+		var attr = find_child(node, "rect").attributes;
+		var width = parseFloat(attr.width.value);
+		var xmin = parseFloat(attr.x.value);
+		var xmax = parseFloat(xmin + width);
+		var ymin = parseFloat(attr.y.value);
+		var ratio = (svg.width.baseVal.value - 2 * 10) / width;
+
+		// XXX: Workaround for JavaScript float issues (fix me)
+		var fudge = 0.0001;
+
+		unzoombtn.classList.remove("hide");
+
+		var el = document.getElementById("frames").children;
+		for (var i = 0; i < el.length; i++) {
+			var e = el[i];
+			var a = find_child(e, "rect").attributes;
+			var ex = parseFloat(a.x.value);
+			var ew = parseFloat(a.width.value);
+			var upstack;
+			// Is it an ancestor
+			if (0 == 0) {
+				upstack = parseFloat(a.y.value) > ymin;
+			} else {
+				upstack = parseFloat(a.y.value) < ymin;
+			}
+			if (upstack) {
+				// Direct ancestor
+				if (ex <= xmin && (ex+ew+fudge) >= xmax) {
+					e.classList.add("parent");
+					zoom_parent(e);
+					update_text(e);
+				}
+				// not in current path
+				else
+					e.classList.add("hide");
+			}
+			// Children maybe
+			else {
+				// no common path
+				if (ex < xmin || ex + fudge >= xmax) {
+					e.classList.add("hide");
+				}
+				else {
+					zoom_child(e, xmin, ratio);
+					update_text(e);
+				}
+			}
+		}
+		search();
+	}
+	function unzoom(dont_update_text) {
+		unzoombtn.classList.add("hide");
+		var el = document.getElementById("frames").children;
+		for(var i = 0; i < el.length; i++) {
+			el[i].classList.remove("parent");
+			el[i].classList.remove("hide");
+			zoom_reset(el[i]);
+			if(!dont_update_text) update_text(el[i]);
+		}
+		search();
+	}
+	function clearzoom() {
+		unzoom();
+
+		// remove zoom state
+		var params = get_params();
+		if (params.x) delete params.x;
+		if (params.y) delete params.y;
+		history.replaceState(null, null, parse_params(params));
+	}
+
+	// search
+	function toggle_ignorecase() {
+		ignorecase = !ignorecase;
+		if (ignorecase) {
+			ignorecaseBtn.classList.add("show");
+		} else {
+			ignorecaseBtn.classList.remove("show");
+		}
+		reset_search();
+		search();
+	}
+	function reset_search() {
+		var el = document.querySelectorAll("#frames rect");
+		for (var i = 0; i < el.length; i++) {
+			orig_load(el[i], "fill")
+		}
+		var params = get_params();
+		delete params.s;
+		history.replaceState(null, null, parse_params(params));
+	}
+	function search_prompt() {
+		if (!searching) {
+			var term = prompt("Enter a search term (regexp " +
+			    "allowed, eg: ^ext4_)"
+			    + (ignorecase ? ", ignoring case" : "")
+			    + "\nPress Ctrl-i to toggle case sensitivity", "");
+			if (term != null) search(term);
+		} else {
+			reset_search();
+			searching = 0;
+			currentSearchTerm = null;
+			searchbtn.classList.remove("show");
+			searchbtn.firstChild.nodeValue = "Search"
+			matchedtxt.classList.add("hide");
+			matchedtxt.firstChild.nodeValue = ""
+		}
+	}
+	function search(term) {
+		if (term) currentSearchTerm = term;
+		if (currentSearchTerm === null) return;
+
+		var re = new RegExp(currentSearchTerm, ignorecase ? 'i' : '');
+		var el = document.getElementById("frames").children;
+		var matches = new Object();
+		var maxwidth = 0;
+		for (var i = 0; i < el.length; i++) {
+			var e = el[i];
+			var func = g_to_func(e);
+			var rect = find_child(e, "rect");
+			if (func == null || rect == null)
+				continue;
+
+			// Save max width. Only works as we have a root frame
+			var w = parseFloat(rect.attributes.width.value);
+			if (w > maxwidth)
+				maxwidth = w;
+
+			if (func.match(re)) {
+				// highlight
+				var x = parseFloat(rect.attributes.x.value);
+				orig_save(rect, "fill");
+				rect.attributes.fill.value = "rgb(230,0,230)";
+
+				// remember matches
+				if (matches[x] == undefined) {
+					matches[x] = w;
+				} else {
+					if (w > matches[x]) {
+						// overwrite with parent
+						matches[x] = w;
+					}
+				}
+				searching = 1;
+			}
+		}
+		if (!searching)
+			return;
+		var params = get_params();
+		params.s = currentSearchTerm;
+		history.replaceState(null, null, parse_params(params));
+
+		searchbtn.classList.add("show");
+		searchbtn.firstChild.nodeValue = "Reset Search";
+
+		// calculate percent matched, excluding vertical overlap
+		var count = 0;
+		var lastx = -1;
+		var lastw = 0;
+		var keys = Array();
+		for (k in matches) {
+			if (matches.hasOwnProperty(k))
+				keys.push(k);
+		}
+		// sort the matched frames by their x location
+		// ascending, then width descending
+		keys.sort(function(a, b){
+			return a - b;
+		});
+		// Step through frames saving only the biggest bottom-up frames
+		// thanks to the sort order. This relies on the tree property
+		// where children are always smaller than their parents.
+		var fudge = 0.0001;	// JavaScript floating point
+		for (var k in keys) {
+			var x = parseFloat(keys[k]);
+			var w = matches[keys[k]];
+			if (x >= lastx + lastw - fudge) {
+				count += w;
+				lastx = x;
+				lastw = w;
+			}
+		}
+		// display matched percent
+		matchedtxt.classList.remove("hide");
+		var pct = 100 * count / maxwidth;
+		if (pct != 100) pct = pct.toFixed(1)
+		matchedtxt.firstChild.nodeValue = "Matched: " + pct + "%";
+	}
+]]>
+</script>
+<rect x="0.0" y="0" width="1200.0" height="470.0" fill="url(#background)"  />
+<text id="title" x="600.00" y="24" >LSHDBSCAN_exec MNIST L=230 M=9 K=72</text>
+<text id="details" x="10.00" y="453" > </text>
+<text id="unzoom" x="10.00" y="24" class="hide">Reset Zoom</text>
+<text id="search" x="1090.00" y="24" >Search</text>
+<text id="ignorecase" x="1174.00" y="24" >ic</text>
+<text id="matched" x="1090.00" y="453" > </text>
+<g id="frames">
+<g >
+<title>std::__new_allocator&lt;char&gt;::allocate (602,885,467 samples, 0.07%)</title><rect x="1180.3" y="213" width="0.8" height="15.0" fill="rgb(226,98,23)" rx="2" ry="2" />
+<text  x="1183.30" y="223.5" ></text>
+</g>
+<g >
+<title>void tbb::detail::d1::dynamic_grainsize_mode&lt;tbb::detail::d1::adaptive_mode&lt;tbb::detail::d1::auto_partition_type&gt; &gt;::work_balance&lt;tbb::detail::d1::start_for&lt;tbb::detail::d1::blocked_range&lt;unsigned long&gt;, tbb::detail::d1::parallel_for_body_wrapper&lt;SortBuffers::pass (5,828,658,715 samples, 0.64%)</title><rect x="1152.3" y="309" width="7.6" height="15.0" fill="rgb(207,13,3)" rx="2" ry="2" />
+<text  x="1155.34" y="319.5" ></text>
+</g>
+<g >
+<title>[unknown] (262,190,399 samples, 0.03%)</title><rect x="1167.2" y="213" width="0.4" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="1170.23" y="223.5" ></text>
+</g>
+<g >
+<title>[unknown] (131,070,664 samples, 0.01%)</title><rect x="1165.3" y="213" width="0.1" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="1168.26" y="223.5" ></text>
+</g>
+<g >
+<title>__libc_malloc2 (576,747,082 samples, 0.06%)</title><rect x="1167.0" y="293" width="0.7" height="15.0" fill="rgb(218,61,14)" rx="2" ry="2" />
+<text  x="1169.99" y="303.5" ></text>
+</g>
+<g >
+<title>__memmove_avx_unaligned_erms_rtm (157,074,344 samples, 0.02%)</title><rect x="506.3" y="309" width="0.2" height="15.0" fill="rgb(251,214,51)" rx="2" ry="2" />
+<text  x="509.29" y="319.5" ></text>
+</g>
+<g >
+<title>void std::__introsort_loop&lt;__gnu_cxx::__normal_iterator&lt;unsigned long*, std::vector&lt;unsigned long, std::allocator&lt;unsigned long&gt; &gt; &gt;, long, HashTable::getMedian (302,743,940 samples, 0.03%)</title><rect x="509.6" y="245" width="0.4" height="15.0" fill="rgb(244,181,43)" rx="2" ry="2" />
+<text  x="512.65" y="255.5" ></text>
+</g>
+<g >
+<title>__correctly_grouped_prefixmb (131,122,326 samples, 0.01%)</title><rect x="1183.8" y="229" width="0.2" height="15.0" fill="rgb(250,207,49)" rx="2" ry="2" />
+<text  x="1186.79" y="239.5" ></text>
+</g>
+<g >
+<title>malloc (366,390,276 samples, 0.04%)</title><rect x="507.5" y="293" width="0.5" height="15.0" fill="rgb(230,119,28)" rx="2" ry="2" />
+<text  x="510.48" y="303.5" ></text>
+</g>
+<g >
+<title>[unknown] (183,517,884 samples, 0.02%)</title><rect x="1167.3" y="133" width="0.3" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="1170.33" y="143.5" ></text>
+</g>
+<g >
+<title>std::ostream::flush (127,997,142 samples, 0.01%)</title><rect x="1166.1" y="309" width="0.1" height="15.0" fill="rgb(220,71,17)" rx="2" ry="2" />
+<text  x="1169.08" y="319.5" ></text>
+</g>
+<g >
+<title>[libtbb.so.12.18] (352,887,710,380 samples, 38.69%)</title><rect x="705.1" y="357" width="456.5" height="15.0" fill="rgb(231,120,28)" rx="2" ry="2" />
+<text  x="708.11" y="367.5" >[libtbb.so.12.18]</text>
+</g>
+<g >
+<title>[unknown] (2,806,296,680 samples, 0.31%)</title><rect x="502.6" y="133" width="3.6" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="505.56" y="143.5" ></text>
+</g>
+<g >
+<title>sysmalloc (196,006,565 samples, 0.02%)</title><rect x="507.2" y="261" width="0.3" height="15.0" fill="rgb(213,38,9)" rx="2" ry="2" />
+<text  x="510.20" y="271.5" ></text>
+</g>
+<g >
+<title>angularHash (77,447,944 samples, 0.01%)</title><rect x="1185.2" y="389" width="0.1" height="15.0" fill="rgb(238,151,36)" rx="2" ry="2" />
+<text  x="1188.17" y="399.5" ></text>
+</g>
+<g >
+<title>std::istreambuf_iterator&lt;char, std::char_traits&lt;char&gt; &gt;::equal (104,851,626 samples, 0.01%)</title><rect x="1177.1" y="229" width="0.1" height="15.0" fill="rgb(235,139,33)" rx="2" ry="2" />
+<text  x="1180.05" y="239.5" ></text>
+</g>
+<g >
+<title>[unknown] (98,487,061 samples, 0.01%)</title><rect x="13.7" y="261" width="0.1" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="16.72" y="271.5" ></text>
+</g>
+<g >
+<title>[unknown] (91,399,264 samples, 0.01%)</title><rect x="507.3" y="165" width="0.2" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="510.33" y="175.5" ></text>
+</g>
+<g >
+<title>str_to_mpn.part.0.constprop.0 (104,932,509 samples, 0.01%)</title><rect x="1184.7" y="213" width="0.1" height="15.0" fill="rgb(248,199,47)" rx="2" ry="2" />
+<text  x="1187.66" y="223.5" ></text>
+</g>
+<g >
+<title>[libtbb.so.12.18] (40,432,715,563 samples, 4.43%)</title><rect x="712.6" y="325" width="52.3" height="15.0" fill="rgb(231,120,28)" rx="2" ry="2" />
+<text  x="715.57" y="335.5" >[libt..</text>
+</g>
+<g >
+<title>std::ctype&lt;char&gt;::is (131,069,797 samples, 0.01%)</title><rect x="1170.0" y="277" width="0.1" height="15.0" fill="rgb(246,190,45)" rx="2" ry="2" />
+<text  x="1172.97" y="287.5" ></text>
+</g>
+<g >
+<title>[unknown] (104,710,426 samples, 0.01%)</title><rect x="704.8" y="309" width="0.2" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="707.84" y="319.5" ></text>
+</g>
+<g >
+<title>void std::__introsort_loop&lt;__gnu_cxx::__normal_iterator&lt;unsigned long*, std::vector&lt;unsigned long, std::allocator&lt;unsigned long&gt; &gt; &gt;, long, HashTable::getMedian (130,882,260 samples, 0.01%)</title><rect x="509.9" y="229" width="0.1" height="15.0" fill="rgb(244,181,43)" rx="2" ry="2" />
+<text  x="512.87" y="239.5" ></text>
+</g>
+<g >
+<title>operator new (576,747,082 samples, 0.06%)</title><rect x="1167.0" y="309" width="0.7" height="15.0" fill="rgb(216,51,12)" rx="2" ry="2" />
+<text  x="1169.99" y="319.5" ></text>
+</g>
+<g >
+<title>strlen@plt (104,837,695 samples, 0.01%)</title><rect x="1184.8" y="229" width="0.1" height="15.0" fill="rgb(240,162,38)" rx="2" ry="2" />
+<text  x="1187.79" y="239.5" ></text>
+</g>
+<g >
+<title>std::istream&amp; std::istream::_M_extract&lt;double&gt; (157,341,885 samples, 0.02%)</title><rect x="1188.9" y="389" width="0.2" height="15.0" fill="rgb(212,35,8)" rx="2" ry="2" />
+<text  x="1191.86" y="399.5" ></text>
+</g>
+<g >
+<title>std::string::push_back (655,640,616 samples, 0.07%)</title><rect x="1178.6" y="229" width="0.9" height="15.0" fill="rgb(245,186,44)" rx="2" ry="2" />
+<text  x="1181.61" y="239.5" ></text>
+</g>
+<g >
+<title>std::istreambuf_iterator&lt;char, std::char_traits&lt;char&gt; &gt;::istreambuf_iterator (157,337,799 samples, 0.02%)</title><rect x="1170.1" y="293" width="0.2" height="15.0" fill="rgb(250,208,49)" rx="2" ry="2" />
+<text  x="1173.14" y="303.5" ></text>
+</g>
+<g >
+<title>tbb::detail::r1::spawn (78,325,634 samples, 0.01%)</title><rect x="1160.5" y="309" width="0.1" height="15.0" fill="rgb(224,89,21)" rx="2" ry="2" />
+<text  x="1163.52" y="319.5" ></text>
+</g>
+<g >
+<title>[unknown] (78,531,473 samples, 0.01%)</title><rect x="506.2" y="261" width="0.1" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="509.19" y="271.5" ></text>
+</g>
+<g >
+<title>[unknown] (209,730,980 samples, 0.02%)</title><rect x="1166.6" y="197" width="0.3" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="1169.62" y="207.5" ></text>
+</g>
+<g >
+<title>__mpn_construct_double (78,663,699 samples, 0.01%)</title><rect x="1184.0" y="229" width="0.1" height="15.0" fill="rgb(228,105,25)" rx="2" ry="2" />
+<text  x="1186.96" y="239.5" ></text>
+</g>
+<g >
+<title>[unknown] (131,070,664 samples, 0.01%)</title><rect x="1165.3" y="277" width="0.1" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="1168.26" y="287.5" ></text>
+</g>
+<g >
+<title>[unknown] (157,285,200 samples, 0.02%)</title><rect x="1166.7" y="117" width="0.2" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="1169.68" y="127.5" ></text>
+</g>
+<g >
+<title>BasePoint::innerProduct (378,476,380,707 samples, 41.49%)</title><rect x="16.6" y="309" width="489.6" height="15.0" fill="rgb(244,182,43)" rx="2" ry="2" />
+<text  x="19.61" y="319.5" >BasePoint::innerProduct</text>
+</g>
+<g >
+<title>[libtbb.so.12.18] (2,482,865,525 samples, 0.27%)</title><rect x="1185.4" y="341" width="3.2" height="15.0" fill="rgb(231,120,28)" rx="2" ry="2" />
+<text  x="1188.37" y="351.5" ></text>
+</g>
+<g >
+<title>point::findRoot (6,598,836,392 samples, 0.72%)</title><rect x="696.4" y="325" width="8.6" height="15.0" fill="rgb(228,108,25)" rx="2" ry="2" />
+<text  x="699.44" y="335.5" ></text>
+</g>
+<g >
+<title>malloc@plt (131,092,215 samples, 0.01%)</title><rect x="1180.9" y="181" width="0.2" height="15.0" fill="rgb(246,192,46)" rx="2" ry="2" />
+<text  x="1183.91" y="191.5" ></text>
+</g>
+<g >
+<title>tcache_put (288,289,319 samples, 0.03%)</title><rect x="1173.6" y="197" width="0.4" height="15.0" fill="rgb(241,169,40)" rx="2" ry="2" />
+<text  x="1176.59" y="207.5" ></text>
+</g>
+<g >
+<title>[unknown] (78,634,227 samples, 0.01%)</title><rect x="1188.2" y="165" width="0.2" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="1191.25" y="175.5" ></text>
+</g>
+<g >
+<title>HashTable::getMedian (382,904,768,142 samples, 41.98%)</title><rect x="14.7" y="325" width="495.3" height="15.0" fill="rgb(226,100,24)" rx="2" ry="2" />
+<text  x="17.73" y="335.5" >HashTable::getMedian</text>
+</g>
+<g >
+<title>[unknown] (235,948,176 samples, 0.03%)</title><rect x="1166.6" y="309" width="0.3" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="1169.58" y="319.5" ></text>
+</g>
+<g >
+<title>std::string::_Rep::_M_dispose (969,978,950 samples, 0.11%)</title><rect x="1172.8" y="245" width="1.2" height="15.0" fill="rgb(247,194,46)" rx="2" ry="2" />
+<text  x="1175.78" y="255.5" ></text>
+</g>
+<g >
+<title>angularHash (1,673,132,638 samples, 0.18%)</title><rect x="1185.9" y="261" width="2.2" height="15.0" fill="rgb(238,151,36)" rx="2" ry="2" />
+<text  x="1188.95" y="271.5" ></text>
+</g>
+<g >
+<title>void tbb::detail::d1::dynamic_grainsize_mode&lt;tbb::detail::d1::adaptive_mode&lt;tbb::detail::d1::auto_partition_type&gt; &gt;::work_balance&lt;tbb::detail::d1::start_for&lt;tbb::detail::d1::blocked_range&lt;unsigned long&gt;, tbb::detail::d1::parallel_for_body_wrapper&lt;buildCsr (748,523,333 samples, 0.08%)</title><rect x="1160.6" y="309" width="1.0" height="15.0" fill="rgb(240,165,39)" rx="2" ry="2" />
+<text  x="1163.62" y="319.5" ></text>
+</g>
+<g >
+<title>[unknown] (78,531,473 samples, 0.01%)</title><rect x="506.2" y="309" width="0.1" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="509.19" y="319.5" ></text>
+</g>
+<g >
+<title>[unknown] (339,863,593 samples, 0.04%)</title><rect x="767.3" y="181" width="0.4" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="770.27" y="191.5" ></text>
+</g>
+<g >
+<title>__sched_yield (340,044,315 samples, 0.04%)</title><rect x="718.2" y="293" width="0.4" height="15.0" fill="rgb(213,40,9)" rx="2" ry="2" />
+<text  x="721.20" y="303.5" ></text>
+</g>
+<g >
+<title>[unknown] (6,559,731,454 samples, 0.72%)</title><rect x="497.7" y="245" width="8.5" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="500.71" y="255.5" ></text>
+</g>
+<g >
+<title>__sched_yield (34,930,531,884 samples, 3.83%)</title><rect x="718.7" y="309" width="45.2" height="15.0" fill="rgb(213,40,9)" rx="2" ry="2" />
+<text  x="721.67" y="319.5" >__sc..</text>
+</g>
+<g >
+<title>std::char_traits&lt;char&gt;::to_int_type (104,825,614 samples, 0.01%)</title><rect x="1169.8" y="261" width="0.2" height="15.0" fill="rgb(254,226,54)" rx="2" ry="2" />
+<text  x="1172.84" y="271.5" ></text>
+</g>
+<g >
+<title>__GI___clone3 (887,397,914,996 samples, 97.28%)</title><rect x="13.7" y="389" width="1147.9" height="15.0" fill="rgb(218,60,14)" rx="2" ry="2" />
+<text  x="16.72" y="399.5" >__GI___clone3</text>
+</g>
+<g >
+<title>tcache_get (104,640,068 samples, 0.01%)</title><rect x="507.8" y="277" width="0.2" height="15.0" fill="rgb(253,222,53)" rx="2" ry="2" />
+<text  x="510.82" y="287.5" ></text>
+</g>
+<g >
+<title>__gnu_cxx::__exchange_and_add_dispatch (209,782,105 samples, 0.02%)</title><rect x="1172.8" y="213" width="0.3" height="15.0" fill="rgb(209,19,4)" rx="2" ry="2" />
+<text  x="1175.85" y="223.5" ></text>
+</g>
+<g >
+<title>malloc@plt (78,114,756 samples, 0.01%)</title><rect x="508.0" y="293" width="0.1" height="15.0" fill="rgb(246,192,46)" rx="2" ry="2" />
+<text  x="510.96" y="303.5" ></text>
+</g>
+<g >
+<title>[unknown] (104,854,433 samples, 0.01%)</title><rect x="1188.2" y="229" width="0.2" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="1191.22" y="239.5" ></text>
+</g>
+<g >
+<title>std::string::_Rep::_S_create (822,588,101 samples, 0.09%)</title><rect x="1180.0" y="229" width="1.1" height="15.0" fill="rgb(254,228,54)" rx="2" ry="2" />
+<text  x="1183.01" y="239.5" ></text>
+</g>
+<g >
+<title>__internal_syscall_cancel (127,997,142 samples, 0.01%)</title><rect x="1166.1" y="165" width="0.1" height="15.0" fill="rgb(251,214,51)" rx="2" ry="2" />
+<text  x="1169.08" y="175.5" ></text>
+</g>
+<g >
+<title>operator new (1,072,125,641 samples, 0.12%)</title><rect x="506.7" y="309" width="1.4" height="15.0" fill="rgb(216,51,12)" rx="2" ry="2" />
+<text  x="509.67" y="319.5" ></text>
+</g>
+<g >
+<title>ConcurrentLSHDBSCAN::ConcurrentLSHDBSCAN (130,951,304 samples, 0.01%)</title><rect x="1161.8" y="325" width="0.1" height="15.0" fill="rgb(230,119,28)" rx="2" ry="2" />
+<text  x="1164.76" y="335.5" ></text>
+</g>
+<g >
+<title>std::istreambuf_iterator&lt;char, std::char_traits&lt;char&gt; &gt;::operator++ (78,676,145 samples, 0.01%)</title><rect x="1178.4" y="245" width="0.1" height="15.0" fill="rgb(233,130,31)" rx="2" ry="2" />
+<text  x="1181.41" y="255.5" ></text>
+</g>
+<g >
+<title>std::string::operator+= (734,314,120 samples, 0.08%)</title><rect x="1178.5" y="245" width="1.0" height="15.0" fill="rgb(213,36,8)" rx="2" ry="2" />
+<text  x="1181.51" y="255.5" ></text>
+</g>
+<g >
+<title>HashTable::bucketKey (295,173,105,284 samples, 32.36%)</title><rect x="768.9" y="309" width="381.8" height="15.0" fill="rgb(215,47,11)" rx="2" ry="2" />
+<text  x="771.89" y="319.5" >HashTable::bucketKey</text>
+</g>
+<g >
+<title>std::string::_Rep::_S_create (131,060,451 samples, 0.01%)</title><rect x="1189.5" y="389" width="0.2" height="15.0" fill="rgb(254,228,54)" rx="2" ry="2" />
+<text  x="1192.49" y="399.5" ></text>
+</g>
+<g >
+<title>[unknown] (2,551,729,112 samples, 0.28%)</title><rect x="10.4" y="389" width="3.3" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="13.35" y="399.5" ></text>
+</g>
+<g >
+<title>[unknown] (1,397,709,546 samples, 0.15%)</title><rect x="1148.9" y="181" width="1.8" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="1151.90" y="191.5" ></text>
+</g>
+<g >
+<title>std::locale::facet::_S_get_c_locale (499,603,791 samples, 0.05%)</title><rect x="1174.0" y="261" width="0.7" height="15.0" fill="rgb(240,165,39)" rx="2" ry="2" />
+<text  x="1177.03" y="271.5" ></text>
+</g>
+<g >
+<title>dataset::readData (14,549,135,645 samples, 1.59%)</title><rect x="1166.3" y="325" width="18.8" height="15.0" fill="rgb(217,58,13)" rx="2" ry="2" />
+<text  x="1169.28" y="335.5" ></text>
+</g>
+<g >
+<title>void std::__introsort_loop&lt;__gnu_cxx::__normal_iterator&lt;unsigned long*, std::vector&lt;unsigned long, std::allocator&lt;unsigned long&gt; &gt; &gt;, long, HashTable::getMedian (1,111,320,159 samples, 0.12%)</title><rect x="508.6" y="293" width="1.4" height="15.0" fill="rgb(244,181,43)" rx="2" ry="2" />
+<text  x="511.60" y="303.5" ></text>
+</g>
+<g >
+<title>[unknown] (262,190,399 samples, 0.03%)</title><rect x="1167.2" y="229" width="0.4" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="1170.23" y="239.5" ></text>
+</g>
+<g >
+<title>angularDistance (143,992,099,499 samples, 15.79%)</title><rect x="510.1" y="325" width="186.3" height="15.0" fill="rgb(205,2,0)" rx="2" ry="2" />
+<text  x="513.11" y="335.5" >angularDistance</text>
+</g>
+<g >
+<title>[unknown] (5,176,132,101 samples, 0.57%)</title><rect x="499.5" y="197" width="6.7" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="502.50" y="207.5" ></text>
+</g>
+<g >
+<title>[unknown] (1,649,775,069 samples, 0.18%)</title><rect x="691.2" y="213" width="2.1" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="694.20" y="223.5" ></text>
+</g>
+<g >
+<title>[unknown] (183,508,953 samples, 0.02%)</title><rect x="1166.7" y="133" width="0.2" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="1169.65" y="143.5" ></text>
+</g>
+<g >
+<title>round_and_return (104,903,045 samples, 0.01%)</title><rect x="1184.4" y="229" width="0.2" height="15.0" fill="rgb(246,188,45)" rx="2" ry="2" />
+<text  x="1187.42" y="239.5" ></text>
+</g>
+<g >
+<title>std::vector&lt;unsigned int, std::allocator&lt;unsigned int&gt; &gt;::_M_default_append (104,854,433 samples, 0.01%)</title><rect x="1188.2" y="309" width="0.2" height="15.0" fill="rgb(228,107,25)" rx="2" ry="2" />
+<text  x="1191.22" y="319.5" ></text>
+</g>
+<g >
+<title>main_arena (104,872,891 samples, 0.01%)</title><rect x="1188.6" y="389" width="0.1" height="15.0" fill="rgb(227,103,24)" rx="2" ry="2" />
+<text  x="1191.59" y="399.5" ></text>
+</g>
+<g >
+<title>[unknown] (183,508,953 samples, 0.02%)</title><rect x="1166.7" y="181" width="0.2" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="1169.65" y="191.5" ></text>
+</g>
+<g >
+<title>[unknown] (209,730,980 samples, 0.02%)</title><rect x="1166.6" y="229" width="0.3" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="1169.62" y="239.5" ></text>
+</g>
+<g >
+<title>_int_free_merge_chunk (104,917,475 samples, 0.01%)</title><rect x="1165.5" y="309" width="0.1" height="15.0" fill="rgb(240,163,39)" rx="2" ry="2" />
+<text  x="1168.47" y="319.5" ></text>
+</g>
+<g >
+<title>[unknown] (78,531,473 samples, 0.01%)</title><rect x="506.2" y="293" width="0.1" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="509.19" y="303.5" ></text>
+</g>
+<g >
+<title>[unknown] (11,322,638,474 samples, 1.24%)</title><rect x="749.2" y="245" width="14.7" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="752.21" y="255.5" ></text>
+</g>
+<g >
+<title>[unknown] (104,854,433 samples, 0.01%)</title><rect x="1188.2" y="277" width="0.2" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="1191.22" y="287.5" ></text>
+</g>
+<g >
+<title>[unknown] (98,487,061 samples, 0.01%)</title><rect x="13.7" y="373" width="0.1" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="16.72" y="383.5" ></text>
+</g>
+<g >
+<title>std::num_get&lt;char, std::istreambuf_iterator&lt;char, std::char_traits&lt;char&gt; &gt; &gt;::_M_extract_float (254,621,060 samples, 0.03%)</title><rect x="1189.1" y="389" width="0.3" height="15.0" fill="rgb(231,123,29)" rx="2" ry="2" />
+<text  x="1192.06" y="399.5" ></text>
+</g>
+<g >
+<title>[unknown] (98,487,061 samples, 0.01%)</title><rect x="13.7" y="357" width="0.1" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="16.72" y="367.5" ></text>
+</g>
+<g >
+<title>std::basic_string&lt;char, std::char_traits&lt;char&gt;, std::allocator&lt;char&gt; &gt;::basic_string (131,125,457 samples, 0.01%)</title><rect x="1177.7" y="245" width="0.1" height="15.0" fill="rgb(212,34,8)" rx="2" ry="2" />
+<text  x="1180.66" y="255.5" ></text>
+</g>
+<g >
+<title>[libstdc++.so.6.0.36] (314,342,414 samples, 0.03%)</title><rect x="1178.0" y="229" width="0.4" height="15.0" fill="rgb(246,192,46)" rx="2" ry="2" />
+<text  x="1181.00" y="239.5" ></text>
+</g>
+<g >
+<title>[unknown] (131,070,664 samples, 0.01%)</title><rect x="1165.3" y="245" width="0.1" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="1168.26" y="255.5" ></text>
+</g>
+<g >
+<title>void std::__introsort_loop&lt;__gnu_cxx::__normal_iterator&lt;unsigned long*, std::vector&lt;unsigned long, std::allocator&lt;unsigned long&gt; &gt; &gt;, long, HashTable::getMedian (559,630,195 samples, 0.06%)</title><rect x="509.3" y="261" width="0.7" height="15.0" fill="rgb(244,181,43)" rx="2" ry="2" />
+<text  x="512.32" y="271.5" ></text>
+</g>
+<g >
+<title>[unknown] (6,272,219,294 samples, 0.69%)</title><rect x="498.1" y="229" width="8.1" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="501.08" y="239.5" ></text>
+</g>
+<g >
+<title>[unknown] (1,400,526,360 samples, 0.15%)</title><rect x="691.5" y="181" width="1.8" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="694.53" y="191.5" ></text>
+</g>
+<g >
+<title>[libtbb.so.12.18] (92,360,114 samples, 0.01%)</title><rect x="13.2" y="373" width="0.1" height="15.0" fill="rgb(231,120,28)" rx="2" ry="2" />
+<text  x="16.23" y="383.5" ></text>
+</g>
+<g >
+<title>[unknown] (390,999,488 samples, 0.04%)</title><rect x="767.2" y="213" width="0.5" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="770.21" y="223.5" ></text>
+</g>
+<g >
+<title>__gthread_once (235,904,750 samples, 0.03%)</title><rect x="1174.4" y="245" width="0.3" height="15.0" fill="rgb(254,229,54)" rx="2" ry="2" />
+<text  x="1177.37" y="255.5" ></text>
+</g>
+<g >
+<title>std::istreambuf_iterator&lt;char, std::char_traits&lt;char&gt; &gt;::_M_get (104,851,626 samples, 0.01%)</title><rect x="1177.1" y="197" width="0.1" height="15.0" fill="rgb(205,4,1)" rx="2" ry="2" />
+<text  x="1180.05" y="207.5" ></text>
+</g>
+<g >
+<title>[unknown] (206,891,622 samples, 0.02%)</title><rect x="1150.4" y="101" width="0.3" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="1153.44" y="111.5" ></text>
+</g>
+<g >
+<title>[unknown] (91,399,264 samples, 0.01%)</title><rect x="507.3" y="133" width="0.2" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="510.33" y="143.5" ></text>
+</g>
+<g >
+<title>std::basic_string&lt;char, std::char_traits&lt;char&gt;, std::allocator&lt;char&gt; &gt;::~basic_string (969,978,950 samples, 0.11%)</title><rect x="1172.8" y="261" width="1.2" height="15.0" fill="rgb(248,200,47)" rx="2" ry="2" />
+<text  x="1175.78" y="271.5" ></text>
+</g>
+<g >
+<title>[unknown] (10,252,101,093 samples, 1.12%)</title><rect x="750.6" y="229" width="13.3" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="753.59" y="239.5" ></text>
+</g>
+<g >
+<title>tcache_put_n (288,289,319 samples, 0.03%)</title><rect x="1173.6" y="181" width="0.4" height="15.0" fill="rgb(217,58,13)" rx="2" ry="2" />
+<text  x="1176.59" y="191.5" ></text>
+</g>
+<g >
+<title>main (18,040,519,707 samples, 1.98%)</title><rect x="1161.8" y="341" width="23.3" height="15.0" fill="rgb(243,179,42)" rx="2" ry="2" />
+<text  x="1164.76" y="351.5" >m..</text>
+</g>
+<g >
+<title>[libstdc++.so.6.0.36] (104,872,891 samples, 0.01%)</title><rect x="1188.6" y="373" width="0.1" height="15.0" fill="rgb(246,192,46)" rx="2" ry="2" />
+<text  x="1191.59" y="383.5" ></text>
+</g>
+<g >
+<title>[unknown] (78,531,473 samples, 0.01%)</title><rect x="506.2" y="277" width="0.1" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="509.19" y="287.5" ></text>
+</g>
+<g >
+<title>[unknown] (4,624,093,506 samples, 0.51%)</title><rect x="500.2" y="181" width="6.0" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="503.21" y="191.5" ></text>
+</g>
+<g >
+<title>[unknown] (314,635,888 samples, 0.03%)</title><rect x="1167.2" y="261" width="0.4" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="1170.16" y="271.5" ></text>
+</g>
+<g >
+<title>dataset::normalizeData (367,071,175 samples, 0.04%)</title><rect x="1165.6" y="325" width="0.5" height="15.0" fill="rgb(217,58,14)" rx="2" ry="2" />
+<text  x="1168.60" y="335.5" ></text>
+</g>
+<g >
+<title>std::istreambuf_iterator&lt;char, std::char_traits&lt;char&gt; &gt;::equal (157,098,343 samples, 0.02%)</title><rect x="1172.6" y="245" width="0.2" height="15.0" fill="rgb(235,139,33)" rx="2" ry="2" />
+<text  x="1175.58" y="255.5" ></text>
+</g>
+<g >
+<title>std::istreambuf_iterator&lt;char, std::char_traits&lt;char&gt; &gt;::_M_get (157,098,343 samples, 0.02%)</title><rect x="1172.6" y="213" width="0.2" height="15.0" fill="rgb(205,4,1)" rx="2" ry="2" />
+<text  x="1175.58" y="223.5" ></text>
+</g>
+<g >
+<title>__gnu_cxx::__is_single_threaded (78,674,905 samples, 0.01%)</title><rect x="1179.1" y="197" width="0.1" height="15.0" fill="rgb(247,194,46)" rx="2" ry="2" />
+<text  x="1182.12" y="207.5" ></text>
+</g>
+<g >
+<title>std::num_get&lt;char, std::istreambuf_iterator&lt;char, std::char_traits&lt;char&gt; &gt; &gt;::get (11,376,875,182 samples, 1.25%)</title><rect x="1170.3" y="293" width="14.8" height="15.0" fill="rgb(231,122,29)" rx="2" ry="2" />
+<text  x="1173.35" y="303.5" ></text>
+</g>
+<g >
+<title>tbb::detail::r1::small_object_pool_impl::deallocate_impl (104,806,358 samples, 0.01%)</title><rect x="1160.4" y="293" width="0.1" height="15.0" fill="rgb(229,113,27)" rx="2" ry="2" />
+<text  x="1163.39" y="303.5" ></text>
+</g>
+<g >
+<title>[unknown] (1,321,182,794 samples, 0.14%)</title><rect x="1149.0" y="165" width="1.7" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="1152.00" y="175.5" ></text>
+</g>
+<g >
+<title>HashTable::identifyCoreBuckets (534,385,694,886 samples, 58.58%)</title><rect x="13.8" y="341" width="691.3" height="15.0" fill="rgb(253,223,53)" rx="2" ry="2" />
+<text  x="16.85" y="351.5" >HashTable::identifyCoreBuckets</text>
+</g>
+<g >
+<title>[unknown] (628,650,338 samples, 0.07%)</title><rect x="505.4" y="101" width="0.8" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="508.38" y="111.5" ></text>
+</g>
+<g >
+<title>std::istreambuf_iterator&lt;char, std::char_traits&lt;char&gt; &gt;::operator* (445,466,981 samples, 0.05%)</title><rect x="1177.8" y="245" width="0.6" height="15.0" fill="rgb(217,58,13)" rx="2" ry="2" />
+<text  x="1180.83" y="255.5" ></text>
+</g>
+<g >
+<title>[unknown] (576,509,345 samples, 0.06%)</title><rect x="763.1" y="149" width="0.8" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="766.11" y="159.5" ></text>
+</g>
+<g >
+<title>_int_free_create_chunk (104,917,475 samples, 0.01%)</title><rect x="1165.5" y="293" width="0.1" height="15.0" fill="rgb(244,182,43)" rx="2" ry="2" />
+<text  x="1168.47" y="303.5" ></text>
+</g>
+<g >
+<title>all (912,207,396,143 samples, 100%)</title><rect x="10.0" y="421" width="1180.0" height="15.0" fill="rgb(213,39,9)" rx="2" ry="2" />
+<text  x="13.00" y="431.5" ></text>
+</g>
+<g >
+<title>std::char_traits&lt;char&gt;::assign (78,595,018 samples, 0.01%)</title><rect x="1179.9" y="197" width="0.1" height="15.0" fill="rgb(226,98,23)" rx="2" ry="2" />
+<text  x="1182.91" y="207.5" ></text>
+</g>
+<g >
+<title>[unknown] (340,592,203 samples, 0.04%)</title><rect x="505.8" y="85" width="0.4" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="508.75" y="95.5" ></text>
+</g>
+<g >
+<title>__libc_start_main@@GLIBC_2.34 (18,040,519,707 samples, 1.98%)</title><rect x="1161.8" y="373" width="23.3" height="15.0" fill="rgb(229,113,27)" rx="2" ry="2" />
+<text  x="1164.76" y="383.5" >_..</text>
+</g>
+<g >
+<title>xwrite (127,997,142 samples, 0.01%)</title><rect x="1166.1" y="213" width="0.1" height="15.0" fill="rgb(253,221,52)" rx="2" ry="2" />
+<text  x="1169.08" y="223.5" ></text>
+</g>
+<g >
+<title>[unknown] (209,730,980 samples, 0.02%)</title><rect x="1166.6" y="277" width="0.3" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="1169.62" y="287.5" ></text>
+</g>
+<g >
+<title>[unknown] (1,937,070,319 samples, 0.21%)</title><rect x="690.8" y="277" width="2.5" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="693.83" y="287.5" ></text>
+</g>
+<g >
+<title>RandGenerator::getRandVal (130,951,304 samples, 0.01%)</title><rect x="1161.8" y="261" width="0.1" height="15.0" fill="rgb(251,213,51)" rx="2" ry="2" />
+<text  x="1164.76" y="271.5" ></text>
+</g>
+<g >
+<title>__memset_avx2_unaligned_erms_rtm (104,854,433 samples, 0.01%)</title><rect x="1188.2" y="293" width="0.2" height="15.0" fill="rgb(219,68,16)" rx="2" ry="2" />
+<text  x="1191.22" y="303.5" ></text>
+</g>
+<g >
+<title>tbb::detail::d1::task_arena_function&lt;ConcurrentLSHDBSCAN::populateSortedTables (2,550,763,334 samples, 0.28%)</title><rect x="1161.9" y="277" width="3.3" height="15.0" fill="rgb(219,67,16)" rx="2" ry="2" />
+<text  x="1164.93" y="287.5" ></text>
+</g>
+<g >
+<title>pthread_once@GLIBC_2.2.5 (131,040,573 samples, 0.01%)</title><rect x="1174.4" y="229" width="0.2" height="15.0" fill="rgb(233,133,31)" rx="2" ry="2" />
+<text  x="1177.41" y="239.5" ></text>
+</g>
+<g >
+<title>__syscall_cancel_arch (127,997,142 samples, 0.01%)</title><rect x="1166.1" y="149" width="0.1" height="15.0" fill="rgb(239,157,37)" rx="2" ry="2" />
+<text  x="1169.08" y="159.5" ></text>
+</g>
+<g >
+<title>[unknown] (547,403,389 samples, 0.06%)</title><rect x="767.0" y="229" width="0.7" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="770.01" y="239.5" ></text>
+</g>
+<g >
+<title>std::string::_Rep::_S_create (104,885,087 samples, 0.01%)</title><rect x="1170.9" y="261" width="0.1" height="15.0" fill="rgb(254,228,54)" rx="2" ry="2" />
+<text  x="1173.88" y="271.5" ></text>
+</g>
+<g >
+<title>[unknown] (78,539,241 samples, 0.01%)</title><rect x="704.9" y="293" width="0.1" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="707.87" y="303.5" ></text>
+</g>
+<g >
+<title>[libtbb.so.12.18] (732,127,834 samples, 0.08%)</title><rect x="717.7" y="309" width="0.9" height="15.0" fill="rgb(231,120,28)" rx="2" ry="2" />
+<text  x="720.69" y="319.5" ></text>
+</g>
+<g >
+<title>std::istream&amp; std::istream::_M_extract&lt;double&gt; (13,238,642,330 samples, 1.45%)</title><rect x="1167.9" y="309" width="17.2" height="15.0" fill="rgb(212,35,8)" rx="2" ry="2" />
+<text  x="1170.94" y="319.5" ></text>
+</g>
+<g >
+<title>std::string::reserve (157,329,205 samples, 0.02%)</title><rect x="1189.7" y="389" width="0.2" height="15.0" fill="rgb(208,15,3)" rx="2" ry="2" />
+<text  x="1192.69" y="399.5" ></text>
+</g>
+<g >
+<title>[unknown] (78,475,284 samples, 0.01%)</title><rect x="763.8" y="101" width="0.1" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="766.75" y="111.5" ></text>
+</g>
+<g >
+<title>point::link (104,315,348 samples, 0.01%)</title><rect x="705.0" y="325" width="0.1" height="15.0" fill="rgb(207,12,2)" rx="2" ry="2" />
+<text  x="707.97" y="335.5" ></text>
+</g>
+<g >
+<title>std::locale::id::_M_id (78,636,952 samples, 0.01%)</title><rect x="13.4" y="357" width="0.1" height="15.0" fill="rgb(222,82,19)" rx="2" ry="2" />
+<text  x="16.41" y="367.5" ></text>
+</g>
+<g >
+<title>__strlen_avx2_rtm (235,859,112 samples, 0.03%)</title><rect x="1184.1" y="229" width="0.3" height="15.0" fill="rgb(242,172,41)" rx="2" ry="2" />
+<text  x="1187.11" y="239.5" ></text>
+</g>
+<g >
+<title>[unknown] (117,572,183 samples, 0.01%)</title><rect x="507.3" y="213" width="0.2" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="510.30" y="223.5" ></text>
+</g>
+<g >
+<title>[unknown] (209,742,302 samples, 0.02%)</title><rect x="1167.3" y="165" width="0.3" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="1170.30" y="175.5" ></text>
+</g>
+<g >
+<title>LSHDBSCAN::LSHDBSCAN (130,951,304 samples, 0.01%)</title><rect x="1161.8" y="309" width="0.1" height="15.0" fill="rgb(212,36,8)" rx="2" ry="2" />
+<text  x="1164.76" y="319.5" ></text>
+</g>
+<g >
+<title>[unknown] (78,434,382 samples, 0.01%)</title><rect x="507.2" y="245" width="0.1" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="510.20" y="255.5" ></text>
+</g>
+<g >
+<title>std::istreambuf_iterator&lt;char, std::char_traits&lt;char&gt; &gt;::_M_at_eof (157,098,343 samples, 0.02%)</title><rect x="1172.6" y="229" width="0.2" height="15.0" fill="rgb(205,0,0)" rx="2" ry="2" />
+<text  x="1175.58" y="239.5" ></text>
+</g>
+<g >
+<title>std::istream::sentry::sentry (1,258,728,805 samples, 0.14%)</title><rect x="1168.5" y="293" width="1.6" height="15.0" fill="rgb(240,163,39)" rx="2" ry="2" />
+<text  x="1171.52" y="303.5" ></text>
+</g>
+<g >
+<title>[unknown] (78,704,627 samples, 0.01%)</title><rect x="1159.8" y="245" width="0.1" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="1162.77" y="255.5" ></text>
+</g>
+<g >
+<title>std::char_traits&lt;char&gt;::assign (157,355,684 samples, 0.02%)</title><rect x="1178.9" y="213" width="0.2" height="15.0" fill="rgb(226,98,23)" rx="2" ry="2" />
+<text  x="1181.85" y="223.5" ></text>
+</g>
+<g >
+<title>[unknown] (127,997,142 samples, 0.01%)</title><rect x="1166.1" y="133" width="0.1" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="1169.08" y="143.5" ></text>
+</g>
+<g >
+<title>ConcurrentLSHDBSCAN::identifyCoreBuckets_thread (534,385,694,886 samples, 58.58%)</title><rect x="13.8" y="357" width="691.3" height="15.0" fill="rgb(224,89,21)" rx="2" ry="2" />
+<text  x="16.85" y="367.5" >ConcurrentLSHDBSCAN::identifyCoreBuckets_thread</text>
+</g>
+<g >
+<title>[unknown] (209,730,980 samples, 0.02%)</title><rect x="1166.6" y="293" width="0.3" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="1169.62" y="303.5" ></text>
+</g>
+<g >
+<title>void std::__convert_to_v&lt;double&gt; (3,081,482,509 samples, 0.34%)</title><rect x="1181.1" y="261" width="4.0" height="15.0" fill="rgb(224,89,21)" rx="2" ry="2" />
+<text  x="1184.08" y="271.5" ></text>
+</g>
+<g >
+<title>[unknown] (11,704,880,070 samples, 1.28%)</title><rect x="748.7" y="261" width="15.2" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="751.72" y="271.5" ></text>
+</g>
+<g >
+<title>[unknown] (78,704,627 samples, 0.01%)</title><rect x="1159.8" y="229" width="0.1" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="1162.77" y="239.5" ></text>
+</g>
+<g >
+<title>std::string::_Rep::_M_set_length_and_sharable (104,949,965 samples, 0.01%)</title><rect x="1179.2" y="197" width="0.2" height="15.0" fill="rgb(246,190,45)" rx="2" ry="2" />
+<text  x="1182.22" y="207.5" ></text>
+</g>
+<g >
+<title>[unknown] (2,303,358,801 samples, 0.25%)</title><rect x="690.4" y="293" width="2.9" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="693.36" y="303.5" ></text>
+</g>
+<g >
+<title>HashTable::HashTable (130,951,304 samples, 0.01%)</title><rect x="1161.8" y="293" width="0.1" height="15.0" fill="rgb(246,190,45)" rx="2" ry="2" />
+<text  x="1164.76" y="303.5" ></text>
+</g>
+<g >
+<title>[unknown] (131,070,664 samples, 0.01%)</title><rect x="1165.3" y="229" width="0.1" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="1168.26" y="239.5" ></text>
+</g>
+<g >
+<title>std::string::_Rep::_M_clone (1,119,194,536 samples, 0.12%)</title><rect x="1179.6" y="245" width="1.5" height="15.0" fill="rgb(232,128,30)" rx="2" ry="2" />
+<text  x="1182.63" y="255.5" ></text>
+</g>
+<g >
+<title>std::basic_filebuf&lt;char, std::char_traits&lt;char&gt; &gt;::_M_convert_to_external (127,997,142 samples, 0.01%)</title><rect x="1166.1" y="245" width="0.1" height="15.0" fill="rgb(239,157,37)" rx="2" ry="2" />
+<text  x="1169.08" y="255.5" ></text>
+</g>
+<g >
+<title>[unknown] (131,072,592 samples, 0.01%)</title><rect x="1167.4" y="69" width="0.2" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="1170.40" y="79.5" ></text>
+</g>
+<g >
+<title>start_thread (887,299,427,935 samples, 97.27%)</title><rect x="13.8" y="373" width="1147.8" height="15.0" fill="rgb(212,34,8)" rx="2" ry="2" />
+<text  x="16.85" y="383.5" >start_thread</text>
+</g>
+<g >
+<title>tbb::detail::r1::deallocate (104,806,358 samples, 0.01%)</title><rect x="1160.4" y="309" width="0.1" height="15.0" fill="rgb(241,167,39)" rx="2" ry="2" />
+<text  x="1163.39" y="319.5" ></text>
+</g>
+<g >
+<title>tcache_get_n (78,670,207 samples, 0.01%)</title><rect x="1180.8" y="149" width="0.1" height="15.0" fill="rgb(229,110,26)" rx="2" ry="2" />
+<text  x="1183.81" y="159.5" ></text>
+</g>
+<g >
+<title>[unknown] (78,685,961 samples, 0.01%)</title><rect x="1165.5" y="277" width="0.1" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="1168.50" y="287.5" ></text>
+</g>
+<g >
+<title>[libstdc++.so.6.0.36] (471,858,767 samples, 0.05%)</title><rect x="1176.4" y="229" width="0.7" height="15.0" fill="rgb(246,192,46)" rx="2" ry="2" />
+<text  x="1179.44" y="239.5" ></text>
+</g>
+<g >
+<title>tbb::detail::d1::start_for&lt;tbb::detail::d1::blocked_range&lt;unsigned long&gt;, tbb::detail::d1::parallel_for_body_wrapper&lt;ConcurrentLSHDBSCAN::populateSortedTables (1,673,132,638 samples, 0.18%)</title><rect x="1185.9" y="293" width="2.2" height="15.0" fill="rgb(230,119,28)" rx="2" ry="2" />
+<text  x="1188.95" y="303.5" ></text>
+</g>
+<g >
+<title>[unknown] (183,220,849 samples, 0.02%)</title><rect x="763.6" y="133" width="0.3" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="766.62" y="143.5" ></text>
+</g>
+<g >
+<title>_int_free_chunk (131,153,420 samples, 0.01%)</title><rect x="1165.4" y="325" width="0.2" height="15.0" fill="rgb(215,46,11)" rx="2" ry="2" />
+<text  x="1168.43" y="335.5" ></text>
+</g>
+<g >
+<title>operator new (602,885,467 samples, 0.07%)</title><rect x="1180.3" y="197" width="0.8" height="15.0" fill="rgb(216,51,12)" rx="2" ry="2" />
+<text  x="1183.30" y="207.5" ></text>
+</g>
+<g >
+<title>[libtbb.so.12.18] (2,550,763,334 samples, 0.28%)</title><rect x="1161.9" y="293" width="3.3" height="15.0" fill="rgb(231,120,28)" rx="2" ry="2" />
+<text  x="1164.93" y="303.5" ></text>
+</g>
+<g >
+<title>checked_request2size (131,111,231 samples, 0.01%)</title><rect x="1180.6" y="165" width="0.2" height="15.0" fill="rgb(252,219,52)" rx="2" ry="2" />
+<text  x="1183.64" y="175.5" ></text>
+</g>
+<g >
+<title>[unknown] (98,487,061 samples, 0.01%)</title><rect x="13.7" y="245" width="0.1" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="16.72" y="255.5" ></text>
+</g>
+<g >
+<title>[unknown] (78,531,473 samples, 0.01%)</title><rect x="506.2" y="245" width="0.1" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="509.19" y="255.5" ></text>
+</g>
+<g >
+<title>__sched_yield (92,360,114 samples, 0.01%)</title><rect x="13.2" y="357" width="0.1" height="15.0" fill="rgb(213,40,9)" rx="2" ry="2" />
+<text  x="16.23" y="367.5" ></text>
+</g>
+<g >
+<title>clock_gettime@plt (78,601,275 samples, 0.01%)</title><rect x="764.7" y="293" width="0.1" height="15.0" fill="rgb(229,112,27)" rx="2" ry="2" />
+<text  x="767.74" y="303.5" ></text>
+</g>
+<g >
+<title>[unknown] (5,724,411,353 samples, 0.63%)</title><rect x="498.8" y="213" width="7.4" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="501.79" y="223.5" ></text>
+</g>
+<g >
+<title>[unknown] (209,730,980 samples, 0.02%)</title><rect x="1166.6" y="261" width="0.3" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="1169.62" y="271.5" ></text>
+</g>
+<g >
+<title>bool std::operator!=&lt;char, std::char_traits&lt;char&gt; &gt; (655,321,207 samples, 0.07%)</title><rect x="1176.3" y="245" width="0.9" height="15.0" fill="rgb(207,9,2)" rx="2" ry="2" />
+<text  x="1179.34" y="255.5" ></text>
+</g>
+<g >
+<title>[unknown] (7,519,485,269 samples, 0.82%)</title><rect x="496.5" y="293" width="9.7" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="499.47" y="303.5" ></text>
+</g>
+<g >
+<title>__ieee754_acos_fma (1,220,764,171 samples, 0.13%)</title><rect x="694.8" y="309" width="1.6" height="15.0" fill="rgb(223,86,20)" rx="2" ry="2" />
+<text  x="697.79" y="319.5" ></text>
+</g>
+<g >
+<title>tcache_get (78,670,207 samples, 0.01%)</title><rect x="1180.8" y="165" width="0.1" height="15.0" fill="rgb(253,222,53)" rx="2" ry="2" />
+<text  x="1183.81" y="175.5" ></text>
+</g>
+<g >
+<title>BasePoint::innerProduct (78,290,155 samples, 0.01%)</title><rect x="12.5" y="373" width="0.1" height="15.0" fill="rgb(244,182,43)" rx="2" ry="2" />
+<text  x="15.54" y="383.5" ></text>
+</g>
+<g >
+<title>[unknown] (78,575,559 samples, 0.01%)</title><rect x="693.2" y="37" width="0.1" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="696.24" y="47.5" ></text>
+</g>
+<g >
+<title>__syscall_cancel (127,997,142 samples, 0.01%)</title><rect x="1166.1" y="181" width="0.1" height="15.0" fill="rgb(227,102,24)" rx="2" ry="2" />
+<text  x="1169.08" y="191.5" ></text>
+</g>
+<g >
+<title>[unknown] (2,710,724,277 samples, 0.30%)</title><rect x="760.3" y="165" width="3.6" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="763.35" y="175.5" ></text>
+</g>
+<g >
+<title>[unknown] (6,730,789,191 samples, 0.74%)</title><rect x="497.5" y="277" width="8.7" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="500.49" y="287.5" ></text>
+</g>
+<g >
+<title>[unknown] (1,806,877,607 samples, 0.20%)</title><rect x="691.0" y="229" width="2.3" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="694.00" y="239.5" ></text>
+</g>
+<g >
+<title>sysmalloc (104,790,600 samples, 0.01%)</title><rect x="1167.6" y="261" width="0.1" height="15.0" fill="rgb(213,38,9)" rx="2" ry="2" />
+<text  x="1170.60" y="271.5" ></text>
+</g>
+<g >
+<title>[unknown] (1,552,515,314 samples, 0.17%)</title><rect x="1148.7" y="197" width="2.0" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="1151.70" y="207.5" ></text>
+</g>
+<g >
+<title>[unknown] (78,634,227 samples, 0.01%)</title><rect x="1188.2" y="181" width="0.2" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="1191.25" y="191.5" ></text>
+</g>
+<g >
+<title>[unknown] (1,656,354,919 samples, 0.18%)</title><rect x="1148.6" y="229" width="2.1" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="1151.57" y="239.5" ></text>
+</g>
+<g >
+<title>bool std::operator==&lt;char, std::char_traits&lt;char&gt; &gt; (157,098,343 samples, 0.02%)</title><rect x="1172.6" y="261" width="0.2" height="15.0" fill="rgb(226,97,23)" rx="2" ry="2" />
+<text  x="1175.58" y="271.5" ></text>
+</g>
+<g >
+<title>[unknown] (6,704,598,301 samples, 0.73%)</title><rect x="497.5" y="261" width="8.7" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="500.52" y="271.5" ></text>
+</g>
+<g >
+<title>HashTable::bucketKey (1,673,132,638 samples, 0.18%)</title><rect x="1185.9" y="277" width="2.2" height="15.0" fill="rgb(215,47,11)" rx="2" ry="2" />
+<text  x="1188.95" y="287.5" ></text>
+</g>
+<g >
+<title>angularHash (293,570,618,126 samples, 32.18%)</title><rect x="771.0" y="293" width="379.7" height="15.0" fill="rgb(238,151,36)" rx="2" ry="2" />
+<text  x="773.96" y="303.5" >angularHash</text>
+</g>
+<g >
+<title>pthread_once@plt (78,670,357 samples, 0.01%)</title><rect x="1174.6" y="229" width="0.1" height="15.0" fill="rgb(240,161,38)" rx="2" ry="2" />
+<text  x="1177.58" y="239.5" ></text>
+</g>
+<g >
+<title>[unknown] (183,423,701 samples, 0.02%)</title><rect x="506.0" y="37" width="0.2" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="508.96" y="47.5" ></text>
+</g>
+<g >
+<title>[unknown] (209,188,823 samples, 0.02%)</title><rect x="693.1" y="101" width="0.2" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="696.07" y="111.5" ></text>
+</g>
+<g >
+<title>BasePoint::innerProduct (2,524,689,335 samples, 0.28%)</title><rect x="1162.0" y="197" width="3.2" height="15.0" fill="rgb(244,182,43)" rx="2" ry="2" />
+<text  x="1164.96" y="207.5" ></text>
+</g>
+<g >
+<title>std::basic_streambuf&lt;char, std::char_traits&lt;char&gt; &gt;::pubsync (127,997,142 samples, 0.01%)</title><rect x="1166.1" y="293" width="0.1" height="15.0" fill="rgb(214,44,10)" rx="2" ry="2" />
+<text  x="1169.08" y="303.5" ></text>
+</g>
+<g >
+<title>std::chrono::_V2::steady_clock::now (759,058,173 samples, 0.08%)</title><rect x="763.9" y="309" width="1.0" height="15.0" fill="rgb(249,203,48)" rx="2" ry="2" />
+<text  x="766.89" y="319.5" ></text>
+</g>
+<g >
+<title>tbb::detail::d1::start_for&lt;tbb::detail::d1::blocked_range&lt;unsigned long&gt;, tbb::detail::d1::parallel_for_body_wrapper&lt;SortBuffers::pass (7,057,896,627 samples, 0.77%)</title><rect x="1150.7" y="325" width="9.2" height="15.0" fill="rgb(244,182,43)" rx="2" ry="2" />
+<text  x="1153.75" y="335.5" ></text>
+</g>
+<g >
+<title>[unknown] (1,374,319,635 samples, 0.15%)</title><rect x="691.6" y="165" width="1.7" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="694.56" y="175.5" ></text>
+</g>
+<g >
+<title>std::basic_filebuf&lt;char, std::char_traits&lt;char&gt; &gt;::overflow (127,997,142 samples, 0.01%)</title><rect x="1166.1" y="261" width="0.1" height="15.0" fill="rgb(215,49,11)" rx="2" ry="2" />
+<text  x="1169.08" y="271.5" ></text>
+</g>
+<g >
+<title>[unknown] (235,970,321 samples, 0.03%)</title><rect x="1167.3" y="181" width="0.3" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="1170.26" y="191.5" ></text>
+</g>
+<g >
+<title>[unknown] (5,271,738,211 samples, 0.58%)</title><rect x="757.0" y="181" width="6.9" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="760.04" y="191.5" ></text>
+</g>
+<g >
+<title>[unknown] (288,191,704 samples, 0.03%)</title><rect x="505.8" y="69" width="0.4" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="508.82" y="79.5" ></text>
+</g>
+<g >
+<title>grow_heap (117,572,183 samples, 0.01%)</title><rect x="507.3" y="245" width="0.2" height="15.0" fill="rgb(237,151,36)" rx="2" ry="2" />
+<text  x="510.30" y="255.5" ></text>
+</g>
+<g >
+<title>[unknown] (104,854,433 samples, 0.01%)</title><rect x="1188.2" y="245" width="0.2" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="1191.22" y="255.5" ></text>
+</g>
+<g >
+<title>std::basic_filebuf&lt;char, std::char_traits&lt;char&gt; &gt;::sync (127,997,142 samples, 0.01%)</title><rect x="1166.1" y="277" width="0.1" height="15.0" fill="rgb(251,214,51)" rx="2" ry="2" />
+<text  x="1169.08" y="287.5" ></text>
+</g>
+<g >
+<title>tbb::detail::d1::start_for&lt;tbb::detail::d1::blocked_range&lt;unsigned long&gt;, tbb::detail::d1::parallel_for_body_wrapper&lt;ConcurrentLSHDBSCAN::populateSortedTables (296,105,574,830 samples, 32.46%)</title><rect x="767.7" y="325" width="383.0" height="15.0" fill="rgb(230,119,28)" rx="2" ry="2" />
+<text  x="770.71" y="335.5" >tbb::detail::d1::start_for&lt;tbb::detail::d1::blocked_..</text>
+</g>
+<g >
+<title>[unknown] (730,344,192 samples, 0.08%)</title><rect x="766.8" y="293" width="0.9" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="769.77" y="303.5" ></text>
+</g>
+<g >
+<title>[unknown] (1,755,088,790 samples, 0.19%)</title><rect x="1148.4" y="245" width="2.3" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="1151.44" y="255.5" ></text>
+</g>
+<g >
+<title>[unknown] (104,919,267 samples, 0.01%)</title><rect x="1159.7" y="277" width="0.2" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="1162.74" y="287.5" ></text>
+</g>
+<g >
+<title>[unknown] (91,399,264 samples, 0.01%)</title><rect x="507.3" y="181" width="0.2" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="510.33" y="191.5" ></text>
+</g>
+<g >
+<title>cfree@GLIBC_2.2.5 (655,330,884 samples, 0.07%)</title><rect x="1173.1" y="213" width="0.9" height="15.0" fill="rgb(233,131,31)" rx="2" ry="2" />
+<text  x="1176.12" y="223.5" ></text>
+</g>
+<g >
+<title>[unknown] (1,859,246,022 samples, 0.20%)</title><rect x="690.9" y="245" width="2.4" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="693.93" y="255.5" ></text>
+</g>
+<g >
+<title>[unknown] (209,730,980 samples, 0.02%)</title><rect x="1166.6" y="245" width="0.3" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="1169.62" y="255.5" ></text>
+</g>
+<g >
+<title>clock_gettime@@GLIBC_2.17 (601,879,983 samples, 0.07%)</title><rect x="764.0" y="293" width="0.7" height="15.0" fill="rgb(250,209,50)" rx="2" ry="2" />
+<text  x="766.96" y="303.5" ></text>
+</g>
+<g >
+<title>[unknown] (98,487,061 samples, 0.01%)</title><rect x="13.7" y="309" width="0.1" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="16.72" y="319.5" ></text>
+</g>
+<g >
+<title>std::string::_Rep::_M_dispose (969,978,950 samples, 0.11%)</title><rect x="1172.8" y="229" width="1.2" height="15.0" fill="rgb(247,194,46)" rx="2" ry="2" />
+<text  x="1175.78" y="239.5" ></text>
+</g>
+<g >
+<title>[unknown] (104,871,801 samples, 0.01%)</title><rect x="1165.3" y="181" width="0.1" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="1168.30" y="191.5" ></text>
+</g>
+<g >
+<title>std::string::_Rep::_M_is_shared (131,121,250 samples, 0.01%)</title><rect x="1179.1" y="213" width="0.1" height="15.0" fill="rgb(239,157,37)" rx="2" ry="2" />
+<text  x="1182.05" y="223.5" ></text>
+</g>
+<g >
+<title>_int_malloc (431,610,917 samples, 0.05%)</title><rect x="506.9" y="277" width="0.6" height="15.0" fill="rgb(215,47,11)" rx="2" ry="2" />
+<text  x="509.93" y="287.5" ></text>
+</g>
+<g >
+<title>ConcurrentLSHDBSCAN::populateSortedTables (2,482,865,525 samples, 0.27%)</title><rect x="1185.4" y="357" width="3.2" height="15.0" fill="rgb(243,178,42)" rx="2" ry="2" />
+<text  x="1188.37" y="367.5" ></text>
+</g>
+<g >
+<title>std::atomic&lt;tbb::detail::r1::small_object_pool_impl::small_object*&gt;::load (78,584,068 samples, 0.01%)</title><rect x="1160.4" y="277" width="0.1" height="15.0" fill="rgb(244,183,43)" rx="2" ry="2" />
+<text  x="1163.42" y="287.5" ></text>
+</g>
+<g >
+<title>[unknown] (91,399,264 samples, 0.01%)</title><rect x="507.3" y="149" width="0.2" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="510.33" y="159.5" ></text>
+</g>
+<g >
+<title>[unknown] (104,854,433 samples, 0.01%)</title><rect x="1188.2" y="261" width="0.2" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="1191.22" y="271.5" ></text>
+</g>
+<g >
+<title>[unknown] (1,240,948,970 samples, 0.14%)</title><rect x="1149.1" y="149" width="1.6" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="1152.11" y="159.5" ></text>
+</g>
+<g >
+<title>__GI___libc_write (127,997,142 samples, 0.01%)</title><rect x="1166.1" y="197" width="0.1" height="15.0" fill="rgb(217,57,13)" rx="2" ry="2" />
+<text  x="1169.08" y="207.5" ></text>
+</g>
+<g >
+<title>HashTable::bucketKey (2,524,689,335 samples, 0.28%)</title><rect x="1162.0" y="229" width="3.2" height="15.0" fill="rgb(215,47,11)" rx="2" ry="2" />
+<text  x="1164.96" y="239.5" ></text>
+</g>
+<g >
+<title>std::num_get&lt;char, std::istreambuf_iterator&lt;char, std::char_traits&lt;char&gt; &gt; &gt;::_M_extract_float (3,696,357,943 samples, 0.41%)</title><rect x="1174.7" y="261" width="4.8" height="15.0" fill="rgb(231,123,29)" rx="2" ry="2" />
+<text  x="1177.68" y="271.5" ></text>
+</g>
+<g >
+<title>_int_malloc (576,747,082 samples, 0.06%)</title><rect x="1167.0" y="277" width="0.7" height="15.0" fill="rgb(215,47,11)" rx="2" ry="2" />
+<text  x="1169.99" y="287.5" ></text>
+</g>
+<g >
+<title>std::basic_ios&lt;char, std::char_traits&lt;char&gt; &gt;::exceptions (157,337,799 samples, 0.02%)</title><rect x="1170.1" y="277" width="0.2" height="15.0" fill="rgb(231,123,29)" rx="2" ry="2" />
+<text  x="1173.14" y="287.5" ></text>
+</g>
+<g >
+<title>std::__basic_file&lt;char&gt;::xsputn (127,997,142 samples, 0.01%)</title><rect x="1166.1" y="229" width="0.1" height="15.0" fill="rgb(208,14,3)" rx="2" ry="2" />
+<text  x="1169.08" y="239.5" ></text>
+</g>
+<g >
+<title>[unknown] (982,716,874 samples, 0.11%)</title><rect x="692.1" y="133" width="1.2" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="695.07" y="143.5" ></text>
+</g>
+<g >
+<title>std::locale::id::_M_id (104,849,718 samples, 0.01%)</title><rect x="1176.1" y="229" width="0.2" height="15.0" fill="rgb(222,82,19)" rx="2" ry="2" />
+<text  x="1179.14" y="239.5" ></text>
+</g>
+<g >
+<title>malloc (445,570,344 samples, 0.05%)</title><rect x="1180.3" y="181" width="0.6" height="15.0" fill="rgb(230,119,28)" rx="2" ry="2" />
+<text  x="1183.33" y="191.5" ></text>
+</g>
+<g >
+<title>_start (18,045,570,212 samples, 1.98%)</title><rect x="1161.8" y="389" width="23.3" height="15.0" fill="rgb(245,185,44)" rx="2" ry="2" />
+<text  x="1164.76" y="399.5" >_..</text>
+</g>
+<g >
+<title>[unknown] (678,516,235 samples, 0.07%)</title><rect x="766.8" y="277" width="0.9" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="769.84" y="287.5" ></text>
+</g>
+<g >
+<title>[unknown] (104,919,267 samples, 0.01%)</title><rect x="1159.7" y="293" width="0.2" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="1162.74" y="303.5" ></text>
+</g>
+<g >
+<title>[unknown] (1,086,226,381 samples, 0.12%)</title><rect x="1149.3" y="133" width="1.4" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="1152.31" y="143.5" ></text>
+</g>
+<g >
+<title>__gnu_cxx::__is_single_threaded (78,668,287 samples, 0.01%)</title><rect x="1173.0" y="197" width="0.1" height="15.0" fill="rgb(247,194,46)" rx="2" ry="2" />
+<text  x="1176.02" y="207.5" ></text>
+</g>
+<g >
+<title>BasePoint::innerProduct (293,278,198,093 samples, 32.15%)</title><rect x="771.3" y="277" width="379.4" height="15.0" fill="rgb(244,182,43)" rx="2" ry="2" />
+<text  x="774.34" y="287.5" >BasePoint::innerProduct</text>
+</g>
+<g >
+<title>[unknown] (262,190,399 samples, 0.03%)</title><rect x="1167.2" y="197" width="0.4" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="1170.23" y="207.5" ></text>
+</g>
+<g >
+<title>LSHDBSCAN_exec (912,207,396,143 samples, 100.00%)</title><rect x="10.0" y="405" width="1180.0" height="15.0" fill="rgb(229,113,27)" rx="2" ry="2" />
+<text  x="13.00" y="415.5" >LSHDBSCAN_exec</text>
+</g>
+<g >
+<title>[unknown] (209,783,887 samples, 0.02%)</title><rect x="1170.8" y="277" width="0.3" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="1173.78" y="287.5" ></text>
+</g>
+<g >
+<title>ConcurrentLSHDBSCAN::populateSortedTables (2,707,992,186 samples, 0.30%)</title><rect x="1161.9" y="309" width="3.5" height="15.0" fill="rgb(243,178,42)" rx="2" ry="2" />
+<text  x="1164.93" y="319.5" ></text>
+</g>
+<g >
+<title>[unknown] (98,487,061 samples, 0.01%)</title><rect x="13.7" y="293" width="0.1" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="16.72" y="303.5" ></text>
+</g>
+<g >
+<title>_int_free_chunk (78,045,711 samples, 0.01%)</title><rect x="506.5" y="309" width="0.1" height="15.0" fill="rgb(215,46,11)" rx="2" ry="2" />
+<text  x="509.50" y="319.5" ></text>
+</g>
+<g >
+<title>[unknown] (262,190,399 samples, 0.03%)</title><rect x="1167.2" y="245" width="0.4" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="1170.23" y="255.5" ></text>
+</g>
+<g >
+<title>[unknown] (78,575,559 samples, 0.01%)</title><rect x="693.2" y="69" width="0.1" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="696.24" y="79.5" ></text>
+</g>
+<g >
+<title>[unknown] (2,303,753,284 samples, 0.25%)</title><rect x="503.2" y="117" width="3.0" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="506.21" y="127.5" ></text>
+</g>
+<g >
+<title>[unknown] (2,039,109,048 samples, 0.22%)</title><rect x="765.1" y="309" width="2.6" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="768.08" y="319.5" ></text>
+</g>
+<g >
+<title>tcache_get_n (104,640,068 samples, 0.01%)</title><rect x="507.8" y="261" width="0.2" height="15.0" fill="rgb(229,110,26)" rx="2" ry="2" />
+<text  x="510.82" y="271.5" ></text>
+</g>
+<g >
+<title>BasePoint::innerProduct (1,673,132,638 samples, 0.18%)</title><rect x="1185.9" y="245" width="2.2" height="15.0" fill="rgb(244,182,43)" rx="2" ry="2" />
+<text  x="1188.95" y="255.5" ></text>
+</g>
+<g >
+<title>[unknown] (98,487,061 samples, 0.01%)</title><rect x="13.7" y="325" width="0.1" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="16.72" y="335.5" ></text>
+</g>
+<g >
+<title>__GI_____strtod_l_internal (2,557,507,305 samples, 0.28%)</title><rect x="1181.6" y="245" width="3.3" height="15.0" fill="rgb(209,20,4)" rx="2" ry="2" />
+<text  x="1184.62" y="255.5" ></text>
+</g>
+<g >
+<title>[unknown] (6,576,115,758 samples, 0.72%)</title><rect x="755.3" y="197" width="8.6" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="758.35" y="207.5" ></text>
+</g>
+<g >
+<title>std::string::_Rep::_M_set_length_and_sharable (104,949,965 samples, 0.01%)</title><rect x="1179.2" y="213" width="0.2" height="15.0" fill="rgb(246,190,45)" rx="2" ry="2" />
+<text  x="1182.22" y="223.5" ></text>
+</g>
+<g >
+<title>std::string::_Rep::_M_set_length_and_sharable (130,959,010 samples, 0.01%)</title><rect x="1179.8" y="229" width="0.2" height="15.0" fill="rgb(246,190,45)" rx="2" ry="2" />
+<text  x="1182.84" y="239.5" ></text>
+</g>
+<g >
+<title>[unknown] (131,070,664 samples, 0.01%)</title><rect x="1165.3" y="261" width="0.1" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="1168.26" y="271.5" ></text>
+</g>
+<g >
+<title>[unknown] (313,829,440 samples, 0.03%)</title><rect x="718.2" y="277" width="0.4" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="721.23" y="287.5" ></text>
+</g>
+<g >
+<title>std::num_get&lt;char, std::istreambuf_iterator&lt;char, std::char_traits&lt;char&gt; &gt; &gt;::do_get (10,832,101,380 samples, 1.19%)</title><rect x="1171.1" y="277" width="14.0" height="15.0" fill="rgb(254,229,54)" rx="2" ry="2" />
+<text  x="1174.05" y="287.5" ></text>
+</g>
+<g >
+<title>std::basic_istream&lt;char, std::char_traits&lt;char&gt; &gt;&amp; std::getline&lt;char, std::char_traits&lt;char&gt;, std::allocator&lt;char&gt; &gt; (104,751,423 samples, 0.01%)</title><rect x="1167.8" y="309" width="0.1" height="15.0" fill="rgb(244,181,43)" rx="2" ry="2" />
+<text  x="1170.77" y="319.5" ></text>
+</g>
+<g >
+<title>void tbb::detail::d1::parallel_for_impl&lt;unsigned long, SortBuffers::pass (131,057,343 samples, 0.01%)</title><rect x="1188.4" y="309" width="0.2" height="15.0" fill="rgb(231,119,28)" rx="2" ry="2" />
+<text  x="1191.42" y="319.5" ></text>
+</g>
+<g >
+<title>tbb::detail::d1::task_arena_function&lt;ConcurrentLSHDBSCAN::populateSortedTables (2,482,865,525 samples, 0.27%)</title><rect x="1185.4" y="325" width="3.2" height="15.0" fill="rgb(219,67,16)" rx="2" ry="2" />
+<text  x="1188.37" y="335.5" ></text>
+</g>
+<g >
+<title>[libstdc++.so.6.0.36] (262,206,768 samples, 0.03%)</title><rect x="1177.3" y="229" width="0.4" height="15.0" fill="rgb(246,192,46)" rx="2" ry="2" />
+<text  x="1180.32" y="239.5" ></text>
+</g>
+<g >
+<title>[unknown] (129,419,027 samples, 0.01%)</title><rect x="1150.5" y="85" width="0.2" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="1153.54" y="95.5" ></text>
+</g>
+<g >
+<title>__mprotect (117,572,183 samples, 0.01%)</title><rect x="507.3" y="229" width="0.2" height="15.0" fill="rgb(214,43,10)" rx="2" ry="2" />
+<text  x="510.30" y="239.5" ></text>
+</g>
+<g >
+<title>angularHash (2,524,689,335 samples, 0.28%)</title><rect x="1162.0" y="213" width="3.2" height="15.0" fill="rgb(238,151,36)" rx="2" ry="2" />
+<text  x="1164.96" y="223.5" ></text>
+</g>
+<g >
+<title>[unknown] (131,072,592 samples, 0.01%)</title><rect x="1167.4" y="85" width="0.2" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="1170.40" y="95.5" ></text>
+</g>
+<g >
+<title>std::__new_allocator&lt;char&gt;::allocate (131,060,451 samples, 0.01%)</title><rect x="1189.5" y="373" width="0.2" height="15.0" fill="rgb(226,98,23)" rx="2" ry="2" />
+<text  x="1192.49" y="383.5" ></text>
+</g>
+<g >
+<title>[libtbb.so.12.18] (131,057,343 samples, 0.01%)</title><rect x="1188.4" y="293" width="0.2" height="15.0" fill="rgb(231,120,28)" rx="2" ry="2" />
+<text  x="1191.42" y="303.5" ></text>
+</g>
+<g >
+<title>[libtbb.so.12.18] (2,550,763,334 samples, 0.28%)</title><rect x="1161.9" y="261" width="3.3" height="15.0" fill="rgb(231,120,28)" rx="2" ry="2" />
+<text  x="1164.93" y="271.5" ></text>
+</g>
+<g >
+<title>[unknown] (209,730,980 samples, 0.02%)</title><rect x="1166.6" y="213" width="0.3" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="1169.62" y="223.5" ></text>
+</g>
+<g >
+<title>__libc_start_call_main (18,040,519,707 samples, 1.98%)</title><rect x="1161.8" y="357" width="23.3" height="15.0" fill="rgb(210,26,6)" rx="2" ry="2" />
+<text  x="1164.76" y="367.5" >_..</text>
+</g>
+<g >
+<title>__gnu_cxx::__exchange_and_add_single (78,679,958 samples, 0.01%)</title><rect x="1172.9" y="197" width="0.1" height="15.0" fill="rgb(239,160,38)" rx="2" ry="2" />
+<text  x="1175.91" y="207.5" ></text>
+</g>
+<g >
+<title>std::string::_Alloc_hider::_Alloc_hider (131,125,457 samples, 0.01%)</title><rect x="1177.7" y="229" width="0.1" height="15.0" fill="rgb(226,96,23)" rx="2" ry="2" />
+<text  x="1180.66" y="239.5" ></text>
+</g>
+<g >
+<title>[libtbb.so.12.18] (352,887,710,380 samples, 38.69%)</title><rect x="705.1" y="341" width="456.5" height="15.0" fill="rgb(231,120,28)" rx="2" ry="2" />
+<text  x="708.11" y="351.5" >[libtbb.so.12.18]</text>
+</g>
+<g >
+<title>[libtbb.so.12.18] (1,751,788,405 samples, 0.19%)</title><rect x="1185.9" y="309" width="2.3" height="15.0" fill="rgb(231,120,28)" rx="2" ry="2" />
+<text  x="1188.92" y="319.5" ></text>
+</g>
+<g >
+<title>void std::__introsort_loop&lt;__gnu_cxx::__normal_iterator&lt;unsigned long*, std::vector&lt;unsigned long, std::allocator&lt;unsigned long&gt; &gt; &gt;, long, HashTable::getMedian (78,494,641 samples, 0.01%)</title><rect x="509.9" y="213" width="0.1" height="15.0" fill="rgb(244,181,43)" rx="2" ry="2" />
+<text  x="512.94" y="223.5" ></text>
+</g>
+<g >
+<title>[unknown] (131,070,664 samples, 0.01%)</title><rect x="1165.3" y="197" width="0.1" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="1168.26" y="207.5" ></text>
+</g>
+<g >
+<title>main_arena (78,636,952 samples, 0.01%)</title><rect x="13.4" y="373" width="0.1" height="15.0" fill="rgb(227,103,24)" rx="2" ry="2" />
+<text  x="16.41" y="383.5" ></text>
+</g>
+<g >
+<title>__libc_malloc2 (575,321,821 samples, 0.06%)</title><rect x="506.7" y="293" width="0.8" height="15.0" fill="rgb(218,61,14)" rx="2" ry="2" />
+<text  x="509.74" y="303.5" ></text>
+</g>
+<g >
+<title>std::istreambuf_iterator&lt;char, std::char_traits&lt;char&gt; &gt;::_M_at_eof (104,851,626 samples, 0.01%)</title><rect x="1177.1" y="213" width="0.1" height="15.0" fill="rgb(205,0,0)" rx="2" ry="2" />
+<text  x="1180.05" y="223.5" ></text>
+</g>
+<g >
+<title>BasePoint::norm (1,097,317,358 samples, 0.12%)</title><rect x="693.3" y="309" width="1.5" height="15.0" fill="rgb(225,94,22)" rx="2" ry="2" />
+<text  x="696.34" y="319.5" ></text>
+</g>
+<g >
+<title>[unknown] (131,072,592 samples, 0.01%)</title><rect x="1167.4" y="101" width="0.2" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="1170.40" y="111.5" ></text>
+</g>
+<g >
+<title>[unknown] (599,837,956 samples, 0.07%)</title><rect x="766.9" y="245" width="0.8" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="769.94" y="255.5" ></text>
+</g>
+<g >
+<title>[unknown] (183,508,953 samples, 0.02%)</title><rect x="1166.7" y="165" width="0.2" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="1169.65" y="175.5" ></text>
+</g>
+<g >
+<title>void std::__introsort_loop&lt;__gnu_cxx::__normal_iterator&lt;unsigned long*, std::vector&lt;unsigned long, std::allocator&lt;unsigned long&gt; &gt; &gt;, long, HashTable::getMedian (797,245,468 samples, 0.09%)</title><rect x="509.0" y="277" width="1.0" height="15.0" fill="rgb(244,181,43)" rx="2" ry="2" />
+<text  x="512.01" y="287.5" ></text>
+</g>
+<g >
+<title>__memmove_avx_unaligned_erms_rtm (157,228,852 samples, 0.02%)</title><rect x="1165.2" y="293" width="0.2" height="15.0" fill="rgb(251,214,51)" rx="2" ry="2" />
+<text  x="1168.23" y="303.5" ></text>
+</g>
+<g >
+<title>__sched_yield (2,170,222,830 samples, 0.24%)</title><rect x="764.9" y="325" width="2.8" height="15.0" fill="rgb(213,40,9)" rx="2" ry="2" />
+<text  x="767.91" y="335.5" ></text>
+</g>
+<g >
+<title>tbb::detail::d1::start_for&lt;tbb::detail::d1::blocked_range&lt;unsigned long&gt;, tbb::detail::d1::parallel_for_body_wrapper&lt;ConcurrentLSHDBSCAN::populateSortedTables (2,550,763,334 samples, 0.28%)</title><rect x="1161.9" y="245" width="3.3" height="15.0" fill="rgb(230,119,28)" rx="2" ry="2" />
+<text  x="1164.93" y="255.5" ></text>
+</g>
+<g >
+<title>[libtbb.so.12.18] (131,069,134 samples, 0.01%)</title><rect x="10.2" y="389" width="0.2" height="15.0" fill="rgb(231,120,28)" rx="2" ry="2" />
+<text  x="13.18" y="399.5" ></text>
+</g>
+<g >
+<title>[unknown] (104,871,801 samples, 0.01%)</title><rect x="1165.3" y="165" width="0.1" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="1168.30" y="175.5" ></text>
+</g>
+<g >
+<title>[unknown] (1,859,246,022 samples, 0.20%)</title><rect x="690.9" y="261" width="2.4" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="693.93" y="271.5" ></text>
+</g>
+<g >
+<title>[unknown] (98,487,061 samples, 0.01%)</title><rect x="13.7" y="277" width="0.1" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="16.72" y="287.5" ></text>
+</g>
+<g >
+<title>[unknown] (626,066,799 samples, 0.07%)</title><rect x="766.9" y="261" width="0.8" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="769.90" y="271.5" ></text>
+</g>
+<g >
+<title>[unknown] (646,426,285 samples, 0.07%)</title><rect x="1149.9" y="117" width="0.8" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="1152.88" y="127.5" ></text>
+</g>
+<g >
+<title>[unknown] (31,737,156,708 samples, 3.48%)</title><rect x="722.8" y="293" width="41.1" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="725.80" y="303.5" >[un..</text>
+</g>
+<g >
+<title>HashTable::initializeHashTable (130,951,304 samples, 0.01%)</title><rect x="1161.8" y="277" width="0.1" height="15.0" fill="rgb(208,16,3)" rx="2" ry="2" />
+<text  x="1164.76" y="287.5" ></text>
+</g>
+<g >
+<title>[unknown] (8,137,202,865 samples, 0.89%)</title><rect x="753.3" y="213" width="10.6" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="756.33" y="223.5" ></text>
+</g>
+<g >
+<title>[unknown] (4,274,382,119 samples, 0.47%)</title><rect x="500.7" y="165" width="5.5" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="503.66" y="175.5" ></text>
+</g>
+<g >
+<title>[unknown] (1,295,751,170 samples, 0.14%)</title><rect x="691.7" y="149" width="1.6" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="694.66" y="159.5" ></text>
+</g>
+<g >
+<title>[unknown] (209,626,232 samples, 0.02%)</title><rect x="505.9" y="53" width="0.3" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="508.92" y="63.5" ></text>
+</g>
+<g >
+<title>std::basic_streambuf&lt;char, std::char_traits&lt;char&gt; &gt;::sgetc (131,010,466 samples, 0.01%)</title><rect x="1169.8" y="277" width="0.2" height="15.0" fill="rgb(252,216,51)" rx="2" ry="2" />
+<text  x="1172.80" y="287.5" ></text>
+</g>
+<g >
+<title>[unknown] (1,630,345,398 samples, 0.18%)</title><rect x="1148.6" y="213" width="2.1" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="1151.60" y="223.5" ></text>
+</g>
+<g >
+<title>[unknown] (78,634,227 samples, 0.01%)</title><rect x="1188.2" y="213" width="0.2" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="1191.25" y="223.5" ></text>
+</g>
+<g >
+<title>[unknown] (104,688,207 samples, 0.01%)</title><rect x="763.7" y="117" width="0.2" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="766.72" y="127.5" ></text>
+</g>
+<g >
+<title>LSHDBSCAN::performClustering (2,707,992,186 samples, 0.30%)</title><rect x="1161.9" y="325" width="3.5" height="15.0" fill="rgb(213,37,8)" rx="2" ry="2" />
+<text  x="1164.93" y="335.5" ></text>
+</g>
+<g >
+<title>[unknown] (2,040,685,318 samples, 0.22%)</title><rect x="1148.1" y="261" width="2.6" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="1151.07" y="271.5" ></text>
+</g>
+<g >
+<title>main (2,509,078,620 samples, 0.28%)</title><rect x="1185.3" y="389" width="3.3" height="15.0" fill="rgb(243,179,42)" rx="2" ry="2" />
+<text  x="1188.34" y="399.5" ></text>
+</g>
+<g >
+<title>str_to_mpn (183,604,974 samples, 0.02%)</title><rect x="1184.6" y="229" width="0.2" height="15.0" fill="rgb(252,220,52)" rx="2" ry="2" />
+<text  x="1187.56" y="239.5" ></text>
+</g>
+<g >
+<title>HashTable::bucketKey (321,330,690 samples, 0.04%)</title><rect x="12.6" y="373" width="0.5" height="15.0" fill="rgb(215,47,11)" rx="2" ry="2" />
+<text  x="15.64" y="383.5" ></text>
+</g>
+<g >
+<title>void std::__insertion_sort&lt;__gnu_cxx::__normal_iterator&lt;unsigned long*, std::vector&lt;unsigned long, std::allocator&lt;unsigned long&gt; &gt; &gt;, HashTable::getMedian (78,525,192 samples, 0.01%)</title><rect x="508.1" y="309" width="0.1" height="15.0" fill="rgb(247,193,46)" rx="2" ry="2" />
+<text  x="511.06" y="319.5" ></text>
+</g>
+<g >
+<title>[unknown] (1,531,467,639 samples, 0.17%)</title><rect x="691.4" y="197" width="1.9" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="694.36" y="207.5" ></text>
+</g>
+<g >
+<title>__vdso_clock_gettime (549,510,248 samples, 0.06%)</title><rect x="764.0" y="277" width="0.7" height="15.0" fill="rgb(254,226,54)" rx="2" ry="2" />
+<text  x="767.03" y="287.5" ></text>
+</g>
+<g >
+<title>[unknown] (157,295,924 samples, 0.02%)</title><rect x="1167.4" y="117" width="0.2" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="1170.36" y="127.5" ></text>
+</g>
+<g >
+<title>[unknown] (3,775,617,790 samples, 0.41%)</title><rect x="501.3" y="149" width="4.9" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="504.31" y="159.5" ></text>
+</g>
+<g >
+<title>std::__atomic_base&lt;tbb::detail::r1::small_object_pool_impl::small_object*&gt;::load (78,584,068 samples, 0.01%)</title><rect x="1160.4" y="261" width="0.1" height="15.0" fill="rgb(248,201,48)" rx="2" ry="2" />
+<text  x="1163.42" y="271.5" ></text>
+</g>
+<g >
+<title>[unknown] (78,634,227 samples, 0.01%)</title><rect x="1188.2" y="197" width="0.2" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="1191.25" y="207.5" ></text>
+</g>
+<g >
+<title>[unknown] (852,196,754 samples, 0.09%)</title><rect x="692.2" y="117" width="1.1" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="695.24" y="127.5" ></text>
+</g>
+<g >
+<title>[libstdc++.so.6.0.36] (288,343,433 samples, 0.03%)</title><rect x="1175.9" y="245" width="0.4" height="15.0" fill="rgb(246,192,46)" rx="2" ry="2" />
+<text  x="1178.90" y="255.5" ></text>
+</g>
+<g >
+<title>[unknown] (78,575,559 samples, 0.01%)</title><rect x="693.2" y="53" width="0.1" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="696.24" y="63.5" ></text>
+</g>
+<g >
+<title>[unknown] (209,742,302 samples, 0.02%)</title><rect x="1167.3" y="149" width="0.3" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="1170.30" y="159.5" ></text>
+</g>
+<g >
+<title>BasePoint::innerProduct (141,490,866,984 samples, 15.51%)</title><rect x="510.3" y="309" width="183.0" height="15.0" fill="rgb(244,182,43)" rx="2" ry="2" />
+<text  x="513.31" y="319.5" >BasePoint::innerProduct</text>
+</g>
+<g >
+<title>bool std::operator==&lt;char, std::char_traits&lt;char&gt; &gt; (366,952,980 samples, 0.04%)</title><rect x="1177.2" y="245" width="0.5" height="15.0" fill="rgb(226,97,23)" rx="2" ry="2" />
+<text  x="1180.19" y="255.5" ></text>
+</g>
+<g >
+<title>std::string::_Rep::_M_set_length_and_sharable (78,595,018 samples, 0.01%)</title><rect x="1179.9" y="213" width="0.1" height="15.0" fill="rgb(246,190,45)" rx="2" ry="2" />
+<text  x="1182.91" y="223.5" ></text>
+</g>
+<g >
+<title>[unknown] (98,487,061 samples, 0.01%)</title><rect x="13.7" y="341" width="0.1" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="16.72" y="351.5" ></text>
+</g>
+<g >
+<title>[unknown] (12,586,124,063 samples, 1.38%)</title><rect x="747.6" y="277" width="16.3" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="750.58" y="287.5" ></text>
+</g>
+<g >
+<title>LSHDBSCAN::performClustering (2,509,078,620 samples, 0.28%)</title><rect x="1185.3" y="373" width="3.3" height="15.0" fill="rgb(213,37,8)" rx="2" ry="2" />
+<text  x="1188.34" y="383.5" ></text>
+</g>
+<g >
+<title>tbb::detail::d1::start_for&lt;tbb::detail::d1::blocked_range&lt;unsigned long&gt;, tbb::detail::d1::parallel_for_body_wrapper&lt;buildCsr (1,327,428,679 samples, 0.15%)</title><rect x="1159.9" y="325" width="1.7" height="15.0" fill="rgb(227,103,24)" rx="2" ry="2" />
+<text  x="1162.88" y="335.5" ></text>
+</g>
+<g >
+<title>std::string::reserve (1,250,230,771 samples, 0.14%)</title><rect x="1179.5" y="261" width="1.6" height="15.0" fill="rgb(208,15,3)" rx="2" ry="2" />
+<text  x="1182.46" y="271.5" ></text>
+</g>
+<g >
+<title>dataset::printData (154,215,977 samples, 0.02%)</title><rect x="1166.1" y="325" width="0.2" height="15.0" fill="rgb(230,119,28)" rx="2" ry="2" />
+<text  x="1169.08" y="335.5" ></text>
+</g>
+<g >
+<title>void std::__introsort_loop&lt;__gnu_cxx::__normal_iterator&lt;unsigned long*, std::vector&lt;unsigned long, std::allocator&lt;unsigned long&gt; &gt; &gt;, long, HashTable::getMedian (1,451,655,851 samples, 0.16%)</title><rect x="508.2" y="309" width="1.8" height="15.0" fill="rgb(244,181,43)" rx="2" ry="2" />
+<text  x="511.16" y="319.5" ></text>
+</g>
+<g >
+<title>[unknown] (183,508,953 samples, 0.02%)</title><rect x="1166.7" y="149" width="0.2" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="1169.65" y="159.5" ></text>
+</g>
+<g >
+<title>[unknown] (91,399,264 samples, 0.01%)</title><rect x="507.3" y="197" width="0.2" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="510.33" y="207.5" ></text>
+</g>
+<g >
+<title>[unknown] (104,919,267 samples, 0.01%)</title><rect x="1159.7" y="261" width="0.2" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="1162.74" y="271.5" ></text>
+</g>
+<g >
+<title>[unknown] (130,938,716 samples, 0.01%)</title><rect x="693.2" y="85" width="0.1" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="696.17" y="95.5" ></text>
+</g>
+<g >
+<title>[unknown] (364,803,525 samples, 0.04%)</title><rect x="767.2" y="197" width="0.5" height="15.0" fill="rgb(210,24,5)" rx="2" ry="2" />
+<text  x="770.24" y="207.5" ></text>
+</g>
+</g>
+</svg>
