@@ -36,8 +36,7 @@ void HashTable::populateHashTable(std::vector<point>::iterator begin,
                                   std::vector<point>::iterator end) {
   assert((end - begin) > 0);
 
-  for (std::vector<point>::iterator pointIter = begin; pointIter < end;
-       pointIter++) {
+  for (std::vector<point>::iterator pointIter = begin; pointIter < end; pointIter++) {
     HashedPoint hashedPoint;
     hashedPoint.features.reserve(numberOfHyperplanes);
 
@@ -46,6 +45,12 @@ void HashTable::populateHashTable(std::vector<point>::iterator begin,
                    [pointIter](const Hyperplane &h) -> int {
                      return hashFunc(*pointIter, h);
                    });
+
+    // Functionally equivalent to the above transform
+    // for (const Hyperplane& h : hyperplanes) {
+    //     hashedPoint.features.push_back(hashFunc(*pointIter, h));
+    // }
+
     myMap[hashedPoint].push_back(&(*pointIter));
   }
 }
