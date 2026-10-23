@@ -18,7 +18,7 @@ touch "$ACCURACY_FILE" "$BENCHMARK_FILE"
 
 # Create a fresh CSV for this experiment.
 # Results are appended after each successful run.
-echo "run,elapsed_seconds,accuracy,hash_init_seconds,hash_population_seconds,core_buckets_seconds,merge_identification_seconds,tasks_merge_seconds,relabeling_seconds" > "$CSV_FILE"
+echo "run,elapsed_seconds,accuracy,hash_init_seconds,hash_population_seconds,core_buckets_seconds,merge_identification_seconds,tasks_merge_seconds,relabeling_seconds,total_seconds" > "$CSV_FILE"
 
 echo "Running profiler $total_runs times..."
 
@@ -75,11 +75,14 @@ for ((i = 1; i <= total_runs; i++)); do
             /Relabeling data time:/ {
                 print $NF
             }
+            /Total time:/ {
+                print $NF
+            }
         '
     )
 
-    if [[ ${#benchmark_values[@]} -ne 6 ]]; then
-        echo "Error: Expected 6 benchmark values on run $i, got ${#benchmark_values[@]}." >&2
+    if [[ ${#benchmark_values[@]} -ne 7 ]]; then
+        echo "Error: Expected 7 benchmark values on run $i, got ${#benchmark_values[@]}." >&2
         exit 1
     fi
 
@@ -119,6 +122,7 @@ metrics = [
     ("merge_identification_seconds", "Mean Merge tasks identification time"),
     ("tasks_merge_seconds", "Mean Tasks merge time"),
     ("relabeling_seconds", "Mean Relabeling data time"),
+    ("total_seconds", "Mean Total time"),
 ]
 
 with open(result_file, "w") as f:
