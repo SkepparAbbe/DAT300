@@ -6,35 +6,47 @@
 #include <transformation.h>
 
 HashTable::HashTable(dataset *ds_, size_t numberOfHyperplanes_,
-                     RandGenerator *gen_) {
-  this->ds = ds_;
-  this->gen = gen_;
-  numberOfHyperplanes = numberOfHyperplanes_;
+                     RandGenerator *gen_, size_t numberOfThreads_)
+    : ds(ds_), gen(gen_), numberOfHyperplanes(numberOfHyperplanes_),
+      numberOfThreads(numberOfThreads_) {
+  threadMaps.resize(numberOfThreads);
   this->initializeHashTable(numberOfHyperplanes_);
 }
 
-HashTable::HashTable(dataset *ds_, std::string &fileName) {
-  this->ds = ds_;
+HashTable::HashTable(dataset *ds_, std::string &fileName,
+                     size_t numberOfThreads_)
+    : ds(ds_), numberOfThreads(numberOfThreads_) {
+  threadMaps.resize(numberOfThreads);
   initializeHashTable(fileName);
 }
 
 void HashTable::populateHashTable() {
   assert(ds != NULL);
+  assert(threadMaps.size() == 1);
+
+  auto &localMap = threadMaps[0];
 
   for (auto &point : ds->points) {
     HashedPoint hashedPoint;
+    hashedPoint.features.reserve(numberOfHyperplanes);
 
     std::transform(
         hyperplanes.cbegin(), hyperplanes.cend(),
         std::back_inserter(hashedPoint.features),
-        [&point](const Hyperplane &h) -> double { return hashFunc(point, h); });
-    myMap[hashedPoint].push_back(&point);
+        [&point](const Hyperplane &h) -> int { return hashFunc(point, h); });
+    localMap[hashedPoint].push_back(&point);
   }
+
+  buildBucketIndex();
 }
 
 void HashTable::populateHashTable(std::vector<point>::iterator begin,
-                                  std::vector<point>::iterator end) {
+                                  std::vector<point>::iterator end,
+                                  size_t threadID) {
   assert((end - begin) > 0);
+  assert(threadID < numberOfThreads);
+
+  auto &localMap = threadMaps[threadID];
 
   for (std::vector<point>::iterator pointIter = begin; pointIter < end;
        pointIter++) {
@@ -46,45 +58,72 @@ void HashTable::populateHashTable(std::vector<point>::iterator begin,
                    [pointIter](const Hyperplane &h) -> int {
                      return hashFunc(*pointIter, h);
                    });
-
-    // Functionally equivalent to the above transform
-    // for (const Hyperplane& h : hyperplanes) {
-    //     hashedPoint.features.push_back(hashFunc(*pointIter, h));
-    // }
-
-    myMap[hashedPoint].push_back(&(*pointIter));
+    localMap[hashedPoint].push_back(&(*pointIter));
   }
 }
 
+void HashTable::buildBucketIndex() {
+  bucketIndex.clear();
+  for (const auto &localMap : threadMaps)
+    for (const auto &element : localMap)
+      bucketIndex[element.first].push_back(&element.second);
+}
+
+std::vector<point *> HashTable::collectPoints(const HashedPoint &key) const {
+  std::vector<point *> result;
+
+  auto indexIt = bucketIndex.find(key);
+  if (indexIt == bucketIndex.end())
+    return result;
+
+  size_t total = 0;
+  for (const auto *bucketPtr : indexIt->second)
+    total += bucketPtr->size();
+
+  result.reserve(total);
+
+  for (const auto *bucketPtr : indexIt->second)
+    result.insert(result.end(), bucketPtr->begin(), bucketPtr->end());
+
+  return result;
+}
+
 void HashTable::identifyCoreBuckets() {
-  for (auto &element : myMap) {
-    if (element.second.size() >= minPts) {
-      std::vector<point *> coreBucketElements;
-      coreBucketElements.reserve(element.second.size());
+  for (const auto &indexElement : bucketIndex) {
+    const auto &bucketPtrs = indexElement.second;
 
-      std::copy(element.second.begin(), element.second.end(),
-                std::back_inserter(coreBucketElements));
+    size_t totalSize = 0;
+    for (const auto *bucketPtr : bucketPtrs)
+      totalSize += bucketPtr->size();
 
-      point *core = coreBucketElements[getMedian(coreBucketElements)];
-      size_t cnt = 0;
+    if (totalSize < minPts)
+      continue;
 
-      std::for_each(coreBucketElements.begin(), coreBucketElements.end(),
-                    [core, this, &cnt](point *p) {
-                      if ((p->findRoot() == p) &&
-                          (distanceFunc(*core, *p) <= epsilon)) {
-                        p->link(core);
-                        cnt++;
-                      }
-                    });
+    std::vector<point *> coreBucketElements;
+    coreBucketElements.reserve(totalSize);
+    for (const auto *bucketPtr : bucketPtrs)
+      coreBucketElements.insert(coreBucketElements.end(), bucketPtr->begin(),
+                                bucketPtr->end());
 
-      if (cnt >= minPts) {
-        core->setAsCorePoint();
+    point *core = coreBucketElements[getMedian(coreBucketElements)];
+    size_t cnt = 0;
 
-        CoreBucket coreBucket;
-        coreBucket.representative = core;
-        coreBucket.members = coreBucketElements;
-        coreBuckets.push_back(coreBucket);
-      }
+    std::for_each(coreBucketElements.begin(), coreBucketElements.end(),
+                  [core, this, &cnt](point *p) {
+                    if ((p->findRoot() == p) &&
+                        (distanceFunc(*core, *p) <= epsilon)) {
+                      p->link(core);
+                      cnt++;
+                    }
+                  });
+
+    if (cnt >= minPts) {
+      core->setAsCorePoint();
+
+      CoreBucket coreBucket;
+      coreBucket.representative = core;
+      coreBucket.members = std::move(coreBucketElements);
+      coreBuckets.push_back(coreBucket);
     }
   }
 }
@@ -240,11 +279,7 @@ void HashTable::performMergeTasks() {
 }
 
 std::ostream &HashTable::print(std::ostream &stream, char deli) const {
-  std::cout << "Hashed dataset's size is: " << hashedPoints.size() << std::endl;
-
-  for (const auto &p : this->hashedPoints)
-    p.print(stream, deli) << std::endl;
-
+  std::cout << "Hashed dataset's size is: " << bucketIndex.size() << std::endl;
   return stream;
 }
 
@@ -265,11 +300,13 @@ std::ostream &HashTable::printCoreBuckets(std::ostream &stream,
 std::ostream &HashTable::printTable(std::ostream &stream, char deli) const {
   size_t num = 0;
 
-  for (const auto &element : myMap) {
+  for (const auto &indexElement : bucketIndex) {
     stream << "Bucket " << std::setw(2) << num++ << ":" << std::endl;
 
-    for (const auto &p : element.second) {
-      p->print(stream << '\t', ' ') << std::endl;
+    for (const auto *bucketPtr : indexElement.second) {
+      for (const auto &p : *bucketPtr) {
+        p->print(stream << '\t', ' ') << std::endl;
+      }
     }
   }
   return stream;
@@ -287,41 +324,49 @@ std::ostream &HashTable::printMergeTasks(std::ostream &stream,
 }
 
 void HashTable::identifyCoreBuckets_densityStyle() {
-  for (auto &element : myMap) {
-    if (element.second.size() >= minPts) {
-      std::vector<point *> candidates, coreBucketElements;
-      candidates.reserve(element.second.size());
-      coreBucketElements.reserve(element.second.size());
+  for (const auto &indexElement : bucketIndex) {
+    const auto &bucketPtrs = indexElement.second;
 
-      std::copy(element.second.begin(), element.second.end(),
-                std::back_inserter(candidates));
+    size_t totalSize = 0;
+    for (const auto *bucketPtr : bucketPtrs)
+      totalSize += bucketPtr->size();
 
-      point *core = candidates[getClosestToMean(candidates)];
-      // point* core = candidates[getMedian(candidates)]; #alternative
-      size_t cnt = 0;
+    if (totalSize < minPts)
+      continue;
 
-      std::for_each(candidates.begin(), candidates.end(),
-                    [core, this, &cnt, &coreBucketElements](point *p) {
-                      if (distanceFunc(*core, *p) <= epsilon) {
-                        cnt++;
-                        coreBucketElements.push_back(p);
+    std::vector<point *> candidates;
+    candidates.reserve(totalSize);
+    for (const auto *bucketPtr : bucketPtrs)
+      candidates.insert(candidates.end(), bucketPtr->begin(), bucketPtr->end());
+
+    std::vector<point *> coreBucketElements;
+    coreBucketElements.reserve(candidates.size());
+
+    point *core = candidates[getClosestToMean(candidates)];
+    // point* core = candidates[getMedian(candidates)]; #alternative
+    size_t cnt = 0;
+
+    std::for_each(candidates.begin(), candidates.end(),
+                  [core, this, &cnt, &coreBucketElements](point *p) {
+                    if (distanceFunc(*core, *p) <= epsilon) {
+                      cnt++;
+                      coreBucketElements.push_back(p);
+                    }
+                  });
+
+    if (cnt >= minPts) {
+      CoreBucket coreBucket;
+      coreBucket.representative = core;
+      coreBucket.members = std::move(coreBucketElements);
+
+      core->setAsCorePoint();
+      std::for_each(coreBucket.members.begin(), coreBucket.members.end(),
+                    [core, this, &cnt](point *p) {
+                      if ((p->findRoot() == p)) {
+                        p->link(core);
                       }
                     });
-
-      if (cnt >= minPts) {
-        CoreBucket coreBucket;
-        coreBucket.representative = core;
-        coreBucket.members = coreBucketElements;
-
-        core->setAsCorePoint();
-        std::for_each(coreBucketElements.begin(), coreBucketElements.end(),
-                      [core, this, &cnt](point *p) {
-                        if ((p->findRoot() == p)) {
-                          p->link(core);
-                        }
-                      });
-        coreBuckets.push_back(coreBucket);
-      }
+      coreBuckets.push_back(coreBucket);
     }
   }
 }
@@ -360,11 +405,12 @@ HashTable::getEpsNeighbours(point &query) /* used in ValillaDBSCAN+LSH */
   std::vector<point *> result;
 
   HashedPoint hashedPoint;
+  hashedPoint.features.reserve(numberOfHyperplanes);
 
   std::transform(
       hyperplanes.cbegin(), hyperplanes.cend(),
       std::back_inserter(hashedPoint.features),
-      [&query](const Hyperplane &h) -> double { return hashFunc(query, h); });
+      [&query](const Hyperplane &h) -> int { return hashFunc(query, h); });
 
   return getEpsNeighbours(query, hashedPoint);
 }
@@ -374,7 +420,7 @@ std::vector<point *> HashTable::getEpsNeighbours(
 {
   std::vector<point *> result;
 
-  for (auto neighbour : myMap[hashedPoint]) {
+  for (auto neighbour : collectPoints(hashedPoint)) {
     if (distanceFunc(query, *neighbour) <= epsilon) {
       result.push_back(neighbour);
     }

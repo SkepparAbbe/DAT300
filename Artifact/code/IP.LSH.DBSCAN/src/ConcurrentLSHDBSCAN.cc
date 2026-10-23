@@ -14,7 +14,7 @@ ConcurrentLSHDBSCAN::ConcurrentLSHDBSCAN(dataset *ds_,
     : numberOfThreads((assert(numberOfThreads_ >= 1), numberOfThreads_)),
       numberOfBatches((assert(numberOfBatches_ >= 1), numberOfBatches_)),
       LSHDBSCAN(ds_, numberOfHashTables_, numberOfHyperplanesPerTable_,
-                benchamrk_) {
+                benchamrk_, numberOfThreads_) {
   pid = new pthread_t[numberOfThreads];
 
   populationTasks.reserve(numberOfBatches * numberOfHashTables);
@@ -50,20 +50,28 @@ ConcurrentLSHDBSCAN::ConcurrentLSHDBSCAN(dataset *ds_,
 void ConcurrentLSHDBSCAN::populateHashTables() {
   std::cout << "Populating the concurrent way!" << std::endl;
 
+  std::vector<std::pair<ConcurrentLSHDBSCAN *, size_t>> threadArgs(
+      numberOfThreads);
+
   // For omp_populate results
   // #pragma omp parallel for num_threads(numberOfThreads) schedule(dynamic, 1)
   // for (size_t i = 0; i < populationTasks.size(); ++i) {
   //   auto &task = populationTasks[i];
   //   task.table.populateHashTable(task.begin, task.end);
   // }
-
+  
   for (size_t threadID = 0; threadID < numberOfThreads; ++threadID) {
-    pthread_create(&pid[threadID], NULL, populateHashTables_thread, this);
+    threadArgs[threadID] = {this, threadID};
+    pthread_create(&pid[threadID], NULL, populateHashTables_thread,
+                   &threadArgs[threadID]);
   }
 
   for (size_t threadID = 0; threadID < numberOfThreads; ++threadID) {
     pthread_join(pid[threadID], NULL);
   }
+
+  for (auto &hashTable : hashTables)
+    hashTable.buildBucketIndex();
 }
 
 void ConcurrentLSHDBSCAN::identifyCoreBuckets() {
@@ -123,12 +131,14 @@ void ConcurrentLSHDBSCAN::performRelabeling() {
 }
 
 void *ConcurrentLSHDBSCAN::populateHashTables_thread(void *inputArg) {
-  auto input = (ConcurrentLSHDBSCAN *)inputArg;
+  auto inputArgPair = (std::pair<ConcurrentLSHDBSCAN *, size_t> *)inputArg;
+  auto input = inputArgPair->first;
+  size_t threadID = inputArgPair->second;
 
   for (auto &task : input->populationTasks) {
     if (task.booked == false) {
       if (__sync_bool_compare_and_swap(&(task.booked), false, true)) {
-        task.table.populateHashTable(task.begin, task.end);
+        task.table.populateHashTable(task.begin, task.end, threadID);
       }
     }
   }

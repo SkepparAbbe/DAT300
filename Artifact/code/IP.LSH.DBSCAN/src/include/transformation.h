@@ -1,10 +1,10 @@
 #ifndef __TRANSFORMATION_H__
 #define __TRANSFORMATION_H__
 
-#include "tbb/concurrent_unordered_map.h"
 #include "tbb/concurrent_vector.h"
 #include <point.h>
 #include <randomGen.h>
+#include <unordered_map>
 
 template <class T> inline void hash_combine(std::size_t &seed, const T &v) {
   std::hash<T> hasher;
@@ -59,19 +59,21 @@ private:
   void initializeHashTable(std::string &);
 
   std::ostream &print(std::ostream &stream, char deli) const;
-  std::vector<HashedPoint> hashedPoints;
 
   void identifyMergeTasks();
   size_t numberOfHyperplanes;
+  size_t numberOfThreads = 1;
 
 public:
-  HashTable(dataset *, size_t, RandGenerator *);
-  HashTable(dataset *, std::string &);
+  HashTable(dataset *, size_t, RandGenerator *, size_t numberOfThreads_ = 1);
+  HashTable(dataset *, std::string &, size_t numberOfThreads_ = 1);
 
   std::vector<Hyperplane> hyperplanes;
-  tbb::concurrent_unordered_map<HashedPoint, tbb::concurrent_vector<point *>,
-                                MyHasher>
-      myMap;
+  std::vector<std::unordered_map<HashedPoint, std::vector<point *>, MyHasher>>
+      threadMaps;
+  std::unordered_map<HashedPoint, std::vector<const std::vector<point *> *>,
+                     MyHasher>
+      bucketIndex;
 
   std::vector<CoreBucket> coreBuckets;
   std::vector<std::pair<point *, point *>> mergeTasks;
@@ -87,7 +89,9 @@ public:
   size_t getMedian(std::vector<point *> &) const;
 
   void populateHashTable(std::vector<point>::iterator,
-                         std::vector<point>::iterator);
+                         std::vector<point>::iterator, size_t threadID);
+  void buildBucketIndex();
+  std::vector<point *> collectPoints(const HashedPoint &key) const;
   size_t getClosestToMean(std::vector<point *> &vec) const;
 
   std::ostream &printTable(std::ostream &stream, char deli) const;
