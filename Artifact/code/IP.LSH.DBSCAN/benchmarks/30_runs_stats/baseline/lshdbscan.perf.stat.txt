@@ -1,0 +1,20 @@
+# started on Fri Oct 23 19:36:42 2026
+
+
+ Performance counter stats for 'perf record -F 99 --call-graph dwarf,16384 -o lshdbscan.perf.data -- /home/valdivia/dev/DAT300/Artifact/code/IP.LSH.DBSCAN/benchmarks/../build/LSHDBSCAN_exec -f ../../../data/household/clean_normalized_household.txt -b ../../../data/household/clean_normalized_household.idx_vanilla -m 100 -e 2000 -M 5 -L 20':
+
+            18,917      context-switches                 #    343.5 cs/sec  cs_per_second     
+               843      cpu-migrations                   #     15.3 migrations/sec  migrations_per_second
+           580,465      page-faults                      #  10541.1 faults/sec  page_faults_per_second
+         55,066.67 msec task-clock                       #      nan CPUs  CPUs_utilized       
+       121,059,212      branch-misses                    #      0.6 %  branch_miss_rate         (43.05%)
+    20,154,749,381      branches                         #    366.0 M/sec  branch_frequency     (43.05%)
+   141,202,649,533      cpu-cycles                       #      2.6 GHz  cycles_frequency       (43.02%)
+   103,789,463,911      instructions                     #      0.7 instructions  insn_per_cycle  (50.82%)
+
+      13.503368133 seconds time elapsed
+
+      45.705533000 seconds user
+       9.437334000 seconds sys
+
+
