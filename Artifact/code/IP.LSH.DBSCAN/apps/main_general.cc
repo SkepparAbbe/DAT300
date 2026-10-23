@@ -34,7 +34,7 @@ int main(int argc, char* argv[])
 
 
   std::ofstream benchmarkStr("benchmark.txt", std::ofstream::out | std::ofstream::app);
-  lshdbscan.getBenchmarkResults(benchmarkStr, '\t') << std::endl;
+  lshdbscan.getBenchmarkResults(benchmarkStr, '\n') << std::endl;
   benchmarkStr.close();
 
   std::cout << "Saving clustering labels..." << std::endl;
