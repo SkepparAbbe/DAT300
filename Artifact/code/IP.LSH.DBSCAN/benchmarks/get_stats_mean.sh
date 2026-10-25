@@ -139,10 +139,10 @@ PYTHON
 
 cat "$RESULT_FILE"
 
-if ! {
-    echo "Moving results to $output_folder."
-    mkdir -p "$output_folder"
-    mv "$CSV_FILE" "$RESULT_FILE" accuracy.txt benchmark.txt lshdbscan.perf.stat.txt lshdbscan-flamegraph.svg "$output_folder"
+if {
+    echo "Moving results to $output_folder." &&
+    mkdir -p "$output_folder" &&
+    mv "$CSV_FILE" "$RESULT_FILE" accuracy.txt benchmark.txt lshdbscan.perf.stat.txt lshdbscan-flamegraph.svg "$output_folder" &&
     echo "Results moved to $output_folder."
 }; then
     :
