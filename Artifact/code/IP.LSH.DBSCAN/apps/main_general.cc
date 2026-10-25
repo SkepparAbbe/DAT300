@@ -48,7 +48,7 @@ int main(int argc, char* argv[])
     + ".idx_concurrentlshdbscan";
 
   std::ofstream labelStr(outputFile);	  
-  d.printData(labelStr, '\t', true);
+  d.printData(labelStr, '\n', true);
   labelStr.close();
 
   if (!params.baselineFileName.empty())
