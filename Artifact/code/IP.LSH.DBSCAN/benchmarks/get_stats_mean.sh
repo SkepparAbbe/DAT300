@@ -3,6 +3,7 @@
 set -euo pipefail
 
 DEFAULT_RUNS=30
+DEFAULT_OUTPUT_FOLDER="tmp_benchmark_output"
 
 PROFILE_SCRIPT="./profile_lshdbscan_flamegraph.sh"
 ACCURACY_FILE="accuracy.txt"
@@ -12,6 +13,7 @@ CSV_FILE="run_metrics.csv"
 RESULT_FILE="mean_results.txt"
 
 total_runs="${1:-$DEFAULT_RUNS}"
+output_folder="${2:-$DEFAULT_OUTPUT_FOLDER}"
 
 # Ensure output files exist before measuring their initial line counts.
 touch "$ACCURACY_FILE" "$BENCHMARK_FILE"
@@ -136,3 +138,14 @@ print(f"\nMean results saved to {result_file}")
 PYTHON
 
 cat "$RESULT_FILE"
+
+if {
+    echo "Moving results to $output_folder." &&
+    mkdir -p "$output_folder" &&
+    mv "$CSV_FILE" "$RESULT_FILE" accuracy.txt benchmark.txt lshdbscan.perf.stat.txt lshdbscan-flamegraph.svg "$output_folder" &&
+    echo "Results moved to $output_folder."
+}; then
+    :
+else
+    echo "Warning: Could not move results to $output_folder." >&2
+fi
