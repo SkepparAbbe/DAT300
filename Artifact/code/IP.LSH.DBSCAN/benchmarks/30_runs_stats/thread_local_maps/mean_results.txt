@@ -1,0 +1,10 @@
+Number of runs: 30
+Mean elapsed time (seconds): 17.9704000564
+Mean accuracy: 0.955766666667
+Mean Hash tables initialization time: 5.93913866667
+Mean Hash tables population time: 5.93913866667
+Mean Core buckets identification time: 5.93913866667
+Mean Merge tasks identification time: 5.93913866667
+Mean Tasks merge time: 5.93913866667
+Mean Relabeling data time: 5.93913866667
+Mean Total time: 5.93913866667

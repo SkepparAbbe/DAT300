@@ -1,0 +1,20 @@
+# started on Sun Oct 25 17:28:57 2026
+
+
+ Performance counter stats for 'perf record -F 99 --call-graph dwarf,16384 -o lshdbscan.perf.data -- /home/albinske/thread_local_maps/code/IP.LSH.DBSCAN/benchmarks/../build/LSHDBSCAN_exec -f ../../../data/household/clean_normalized_household.txt -b ../../../data/household/clean_normalized_household.idx_vanilla -m 100 -e 2000 -M 5 -L 20':
+
+           113,147      context-switches                 #    846.0 cs/sec  cs_per_second     
+             1,663      cpu-migrations                   #     12.4 migrations/sec  migrations_per_second
+           986,115      page-faults                      #   7373.1 faults/sec  page_faults_per_second
+        133,745.10 msec task-clock                       #      nan CPUs  CPUs_utilized       
+       158,566,396      branch-misses                    #      0.3 %  branch_miss_rate         (43.05%)
+    48,201,824,519      branches                         #    360.4 M/sec  branch_frequency     (43.11%)
+   342,109,134,765      cpu-cycles                       #      2.6 GHz  cycles_frequency       (43.05%)
+   237,279,165,984      instructions                     #      0.7 instructions  insn_per_cycle  (50.62%)
+
+      18.264945974 seconds time elapsed
+
+      35.956929000 seconds user
+      97.988422000 seconds sys
+
+
