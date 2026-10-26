@@ -1,20 +1,20 @@
-# started on Sun Oct 25 17:28:57 2026
+# started on Mon Oct 26 16:12:08 2026
 
 
  Performance counter stats for 'perf record -F 99 --call-graph dwarf,16384 -o lshdbscan.perf.data -- /home/albinske/thread_local_maps/code/IP.LSH.DBSCAN/benchmarks/../build/LSHDBSCAN_exec -f ../../../data/household/clean_normalized_household.txt -b ../../../data/household/clean_normalized_household.idx_vanilla -m 100 -e 2000 -M 5 -L 20':
 
-           113,147      context-switches                 #    846.0 cs/sec  cs_per_second     
-             1,663      cpu-migrations                   #     12.4 migrations/sec  migrations_per_second
-           986,115      page-faults                      #   7373.1 faults/sec  page_faults_per_second
-        133,745.10 msec task-clock                       #      nan CPUs  CPUs_utilized       
-       158,566,396      branch-misses                    #      0.3 %  branch_miss_rate         (43.05%)
-    48,201,824,519      branches                         #    360.4 M/sec  branch_frequency     (43.11%)
-   342,109,134,765      cpu-cycles                       #      2.6 GHz  cycles_frequency       (43.05%)
-   237,279,165,984      instructions                     #      0.7 instructions  insn_per_cycle  (50.62%)
+           105,323      context-switches                 #    657.7 cs/sec  cs_per_second     
+             1,443      cpu-migrations                   #      9.0 migrations/sec  migrations_per_second
+           994,629      page-faults                      #   6210.6 faults/sec  page_faults_per_second
+        160,150.31 msec task-clock                       #      nan CPUs  CPUs_utilized       
+       158,133,718      branch-misses                    #      0.3 %  branch_miss_rate         (42.93%)
+    55,230,800,952      branches                         #    344.9 M/sec  branch_frequency     (42.99%)
+   410,585,654,122      cpu-cycles                       #      2.6 GHz  cycles_frequency       (43.01%)
+   264,468,650,941      instructions                     #      0.6 instructions  insn_per_cycle  (49.96%)
 
-      18.264945974 seconds time elapsed
+      19.150200233 seconds time elapsed
 
-      35.956929000 seconds user
-      97.988422000 seconds sys
+      39.538049000 seconds user
+     120.798133000 seconds sys
 
 
